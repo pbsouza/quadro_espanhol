@@ -1,0 +1,6 @@
+{
+  "name": "Quadro de Anúncios - Congregação Espanhola de Linhares",
+  "description": "Quadro de anúncios e programação de reuniões para a Congregação Espanhola de Linhares",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

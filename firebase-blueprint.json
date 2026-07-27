@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "midweek_meetings": {
+      "title": "Reunião de Meio de Semana",
+      "description": "Programação da reunião Nossa Vida e Ministério Cristão",
+      "type": "object",
+      "properties": {
+        "weekId": { "type": "string" },
+        "weekLabel": { "type": "string" },
+        "president": { "type": "string" },
+        "initialSong": { "type": "string" },
+        "initialPrayer": { "type": "string" },
+        "counselorSalaB": { "type": "string" },
+        "tesouros": { "type": "array" },
+        "facaSeuMelhor": { "type": "array" },
+        "nossaVidaCrista": { "type": "array" },
+        "middleSong": { "type": "string" },
+        "finalSong": { "type": "string" },
+        "finalPrayer": { "type": "string" },
+        "language": { "type": "string" }
+      },
+      "required": ["weekId", "weekLabel", "president"]
+    },
+    "weekend_meetings": {
+      "title": "Reunião de Fim de Semana",
+      "description": "Discurso Público e Estudo de A Sentinela",
+      "type": "object",
+      "properties": {
+        "weekId": { "type": "string" },
+        "weekLabel": { "type": "string" },
+        "publicTalkTitle": { "type": "string" },
+        "speakerName": { "type": "string" },
+        "speakerCongregation": { "type": "string" },
+        "president": { "type": "string" },
+        "initialSong": { "type": "string" },
+        "watchtowerTitle": { "type": "string" },
+        "watchtowerConductor": { "type": "string" },
+        "watchtowerReader": { "type": "string" },
+        "finalSong": { "type": "string" },
+        "finalPrayer": { "type": "string" }
+      },
+      "required": ["weekId", "weekLabel"]
+    },
+    "announcements": {
+      "title": "Anúncios e Lembretes",
+      "description": "Próximos eventos e avisos importantes da congregação",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "important": { "type": "boolean" },
+        "language": { "type": "string" }
+      },
+      "required": ["title", "content"]
+    }
+  }
+}
