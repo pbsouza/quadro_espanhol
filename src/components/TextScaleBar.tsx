@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppLanguage } from '../types';
+import { getTranslation } from '../data/translations';
 
 interface TextScaleBarProps {
   textScale: number;
@@ -12,7 +13,7 @@ export const TextScaleBar: React.FC<TextScaleBarProps> = ({
   setTextScale,
   language,
 }) => {
-  const isPt = language === 'pt';
+  const t = getTranslation(language);
 
   const handleDecrease = () => {
     if (textScale >= 1.0) {
@@ -43,8 +44,8 @@ export const TextScaleBar: React.FC<TextScaleBarProps> = ({
 
   return (
     <div className="fixed bottom-4 right-4 z-40 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-lg border border-stone-200/80 flex items-center gap-1.5 text-xs font-bold text-stone-700">
-      <span className="text-[11px] text-stone-500 tracking-wider mr-1 hidden sm:inline">
-        {isPt ? 'TEXTO:' : 'TEXTO:'}
+      <span className="text-[11px] text-stone-500 tracking-wider mr-1 hidden sm:inline uppercase">
+        {t.textSize}:
       </span>
 
       {/* Decrease Button (A- / A--) */}
@@ -55,11 +56,7 @@ export const TextScaleBar: React.FC<TextScaleBarProps> = ({
             ? 'bg-[#1C4123] text-white shadow-xs'
             : 'text-stone-700 hover:bg-stone-100'
         }`}
-        title={
-          textScale <= 0.76
-            ? (isPt ? 'Tamanho mínimo' : 'Tamaño mínimo')
-            : (isPt ? 'Diminuir texto' : 'Disminuir texto')
-        }
+        title={t.textSize}
       >
         {decreaseLabel}
       </button>
@@ -72,7 +69,7 @@ export const TextScaleBar: React.FC<TextScaleBarProps> = ({
             ? 'bg-[#1C4123] text-white shadow-xs'
             : 'text-stone-700 hover:bg-stone-100'
         }`}
-        title={isPt ? 'Tamanho normal' : 'Tamaño normal'}
+        title={t.textSize}
       >
         A
       </button>
@@ -85,15 +82,12 @@ export const TextScaleBar: React.FC<TextScaleBarProps> = ({
             ? 'bg-[#1C4123] text-white shadow-xs'
             : 'text-stone-700 hover:bg-stone-100'
         }`}
-        title={
-          textScale >= 1.30
-            ? (isPt ? 'Tamanho máximo' : 'Tamaño máximo')
-            : (isPt ? 'Aumentar texto' : 'Aumentar texto')
-        }
+        title={t.textSize}
       >
         {increaseLabel}
       </button>
     </div>
   );
 };
+
 

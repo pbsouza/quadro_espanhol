@@ -149,6 +149,7 @@ export default function App() {
       {pageView === 'admin' && (
         <AdminPage
           language={language}
+          setLanguage={setLanguage}
           onNavigate={setPageView}
           midweekMeetings={midweekMeetings}
           weekendMeetings={weekendMeetings}

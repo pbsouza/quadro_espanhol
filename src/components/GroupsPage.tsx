@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CongregationGroup, AppLanguage, PageView } from '../types';
 import { ArrowLeft, Menu, Users, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
+import { getTranslation } from '../data/translations';
 
 interface GroupsPageProps {
   groupsList: CongregationGroup[];
@@ -16,7 +17,7 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
   onNavigate,
   onToggleMenu,
 }) => {
-  const isPt = language === 'pt';
+  const t = getTranslation(language);
   const [textScale, setTextScale] = useState<number>(1);
 
   return (
@@ -24,19 +25,19 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => onNavigate('home')}
-          className="p-2 text-[#1C4123] hover:bg-stone-200/60 rounded-xl transition flex items-center gap-1 text-sm font-semibold"
+          className="p-2 text-[#1C4123] hover:bg-stone-200/60 rounded-xl transition flex items-center gap-1 text-sm font-semibold cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="hidden sm:inline">{isPt ? 'Início' : 'Inicio'}</span>
+          <span className="hidden sm:inline">{t.home}</span>
         </button>
 
         <h1 className="text-xl sm:text-2xl font-extrabold text-[#1C4123] tracking-tight text-center flex-1 mx-2">
-          {isPt ? 'Grupos de Serviço de Campo' : 'Grupos de Servicio de Campo'}
+          {t.groupsTitle}
         </h1>
 
         <button
           onClick={onToggleMenu}
-          className="p-2.5 bg-[#1C4123] text-white rounded-xl shadow-xs hover:bg-[#285A31] transition"
+          className="p-2.5 bg-[#1C4123] text-white rounded-xl shadow-xs hover:bg-[#285A31] transition cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -64,11 +65,11 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
                 <ShieldCheck className="w-4 h-4 text-[#1C4123] shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-stone-900 block">
-                    {isPt ? 'Superintendente:' : 'Superintendente:'}{' '}
+                    {t.overseer}:{' '}
                     <span className="font-normal">{group.overseer}</span>
                   </span>
                   <span className="font-bold text-stone-900 block mt-0.5">
-                    {isPt ? 'Ajudante:' : 'Ayudante:'}{' '}
+                    {t.assistant}:{' '}
                     <span className="font-normal">{group.assistant}</span>
                   </span>
                 </div>
@@ -77,7 +78,7 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
               <div className="flex items-start gap-2 pl-1 pt-1">
                 <MapPin className="w-4 h-4 text-stone-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="font-bold text-stone-900">{isPt ? 'Local:' : 'Lugar:'} </strong>
+                  <strong className="font-bold text-stone-900">{t.departureLocation}: </strong>
                   {group.location}
                 </span>
               </div>
@@ -85,10 +86,27 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
               <div className="flex items-start gap-2 pl-1">
                 <Clock className="w-4 h-4 text-stone-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="font-bold text-stone-900">{isPt ? 'Horários:' : 'Horarios:'} </strong>
+                  <strong className="font-bold text-stone-900">{t.meetingTimes}: </strong>
                   {group.schedule}
                 </span>
               </div>
+
+              {group.members && group.members.length > 0 && (
+                <div className="pt-2.5 border-t border-stone-100 mt-3">
+                  <div className="flex items-center gap-1.5 font-bold text-[#1C4123] mb-2 text-xs">
+                    <Users className="w-4 h-4 text-[#1C4123]" />
+                    <span>{t.groupMembers}: ({group.members.length})</span>
+                  </div>
+                  <div className="flex flex-col space-y-1.5 pt-1">
+                    {group.members.map((member, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-stone-800 bg-stone-50 border border-stone-200/70 px-3 py-1.5 rounded-lg font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1C4123] shrink-0"></span>
+                        <span>{member}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -98,3 +116,4 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
     </div>
   );
 };
+

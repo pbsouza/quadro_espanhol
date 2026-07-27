@@ -254,7 +254,8 @@ export const INITIAL_GROUPS: CongregationGroup[] = [
     overseer: 'Lucas Oliveira',
     assistant: 'Rafael Souza',
     location: 'Rua Dom Pedro II, nº 142 - Interlagos',
-    schedule: 'Sábados e Domingos às 09:00'
+    schedule: 'Sábados e Domingos às 09:00',
+    members: ['Lucas Oliveira', 'Rafael Souza', 'Mateus Lima', 'Ana Paula Oliveira', 'Beatriz Gómez']
   },
   {
     id: 'grp-2',
@@ -263,7 +264,8 @@ export const INITIAL_GROUPS: CongregationGroup[] = [
     overseer: 'Carlos Eduardo Santos',
     assistant: 'Antônio Ferreira',
     location: 'Av. Presidente Vargas, nº 850 - Três Barras',
-    schedule: 'Sábados e Domingos às 09:00'
+    schedule: 'Sábados e Domingos às 09:00',
+    members: ['Carlos Eduardo Santos', 'Antônio Ferreira', 'Samuel Ramos', 'Bruno Dias', 'Carla Mendes']
   },
   {
     id: 'grp-3',
@@ -272,6 +274,7 @@ export const INITIAL_GROUPS: CongregationGroup[] = [
     overseer: 'Roberto Almeida',
     assistant: 'Fernando Costa',
     location: 'Rua São Mateus, nº 310 - Novo Horizonte',
-    schedule: 'Sábados e Domingos às 09:00'
+    schedule: 'Sábados e Domingos às 09:00',
+    members: ['Roberto Almeida', 'Fernando Costa', 'Pedro Henrique', 'Thiago Mendes', 'Marcos Silva']
   }
 ];

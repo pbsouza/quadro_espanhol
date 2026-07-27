@@ -1,6 +1,7 @@
 import React from 'react';
 import { PageView, AppLanguage } from '../types';
 import { X, Home, BookOpen, Calendar, Sparkles, Users, MapPin, Megaphone, Settings } from 'lucide-react';
+import { getTranslation } from '../data/translations';
 
 interface MenuDrawerProps {
   isOpen: boolean;
@@ -19,42 +20,42 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const isPt = language === 'pt';
+  const t = getTranslation(language);
 
   const navItems = [
     {
       id: 'home' as PageView,
-      label: isPt ? 'Quadro Principal' : 'Cuadro Principal',
+      label: t.backToHome,
       icon: Home,
     },
     {
       id: 'midweek' as PageView,
-      label: isPt ? 'Reunião Meio de Semana' : 'Reunión entre Semana',
+      label: t.midweekMeeting,
       icon: BookOpen,
     },
     {
       id: 'weekend' as PageView,
-      label: isPt ? 'Reunião Fim de Semana' : 'Reunión Fin de Semana',
+      label: t.weekendMeeting,
       icon: Calendar,
     },
     {
       id: 'cleaning' as PageView,
-      label: isPt ? 'Limpeza do Salão' : 'Limpieza del Salón',
+      label: t.cleaning,
       icon: Sparkles,
     },
     {
       id: 'witnessing' as PageView,
-      label: isPt ? 'Testemunho Público' : 'Predicación Pública',
+      label: t.witnessing,
       icon: MapPin,
     },
     {
       id: 'groups' as PageView,
-      label: isPt ? 'Grupos de Serviço' : 'Grupos de Servicio',
+      label: t.groups,
       icon: Users,
     },
     {
       id: 'announcements' as PageView,
-      label: isPt ? 'Anúncios e Lembretes' : 'Anuncios y Recordatorios',
+      label: t.announcementsAndReminders,
       icon: Megaphone,
     },
   ];
@@ -73,15 +74,15 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
           <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-5">
             <div>
               <h3 className="font-extrabold text-[#1C4123] text-lg">
-                Congregação Linhares
+                {t.congregationName}
               </h3>
               <p className="text-xs text-stone-500 font-medium">
-                {isPt ? 'Espanhola' : 'Española'}
+                {t.congregationType}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-stone-500 hover:text-stone-900 rounded-full hover:bg-stone-200/50 transition"
+              className="p-2 text-stone-500 hover:text-stone-900 rounded-full hover:bg-stone-200/50 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -97,7 +98,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
                     onNavigate(item.id);
                     onClose();
                   }}
-                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-stone-800 font-bold text-sm hover:bg-[#E8F0E6] hover:text-[#1C4123] transition text-left"
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-stone-800 font-bold text-sm hover:bg-[#E8F0E6] hover:text-[#1C4123] transition text-left cursor-pointer"
                 >
                   <Icon className="w-5 h-5 text-[#1C4123] shrink-0" />
                   <span>{item.label}</span>
@@ -113,13 +114,14 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
               onClose();
               onOpenAdmin();
             }}
-            className="w-full flex items-center justify-center gap-2 bg-[#1C4123] text-white py-3 px-4 rounded-xl font-bold text-sm hover:bg-[#285A31] transition shadow-xs"
+            className="w-full flex items-center justify-center gap-2 bg-[#1C4123] text-white py-3 px-4 rounded-xl font-bold text-sm hover:bg-[#285A31] transition shadow-xs cursor-pointer"
           >
             <Settings className="w-4 h-4" />
-            <span>{isPt ? 'Gerenciar Dados (Firebase)' : 'Gestionar Datos'}</span>
+            <span>{t.manage}</span>
           </button>
         </div>
       </div>
     </div>
   );
 };
+

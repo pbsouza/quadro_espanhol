@@ -49,7 +49,9 @@ import {
   ShieldCheck,
   Edit2,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Globe,
+  Languages
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 
@@ -125,6 +127,7 @@ const formatExactDateLabel = (dateStr: string, isPtLang: boolean = true): string
 
 interface AdminPageProps {
   language: AppLanguage;
+  setLanguage?: (lang: AppLanguage) => void;
   onNavigate: (page: PageView) => void;
   midweekMeetings?: MidweekMeeting[];
   weekendMeetings?: WeekendMeeting[];
@@ -138,6 +141,7 @@ interface AdminPageProps {
 
 export const AdminPage: React.FC<AdminPageProps> = ({
   language,
+  setLanguage,
   onNavigate,
   midweekMeetings = [],
   weekendMeetings = [],
@@ -224,6 +228,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [newCleaningGroup, setNewCleaningGroup] = useState('Grupo 1');
   const [newCleaningOverseer, setNewCleaningOverseer] = useState('');
 
+  const [editingGroup, setEditingGroup] = useState<CongregationGroup | null>(null);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [newGroupNum, setNewGroupNum] = useState('1');
   const [newGroupName, setNewGroupName] = useState('');
@@ -231,6 +236,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [newGroupAssistant, setNewGroupAssistant] = useState('');
   const [newGroupLocation, setNewGroupLocation] = useState('');
   const [newGroupSchedule, setNewGroupSchedule] = useState('');
+  const [newGroupMembers, setNewGroupMembers] = useState('');
 
   const [showNewWitnessingModal, setShowNewWitnessingModal] = useState(false);
   const [newWitnessingLocation, setNewWitnessingLocation] = useState('');
@@ -383,9 +389,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         initialPrayer,
         counselorSalaB,
         tesouros: [
-          { id: 't1', title: talkTitle, durationMin: 10, speaker: talkSpeaker, type: 'talk' },
-          { id: 't2', title: 'Joias Espirituais (10 min.)', durationMin: 10, speaker: gemsSpeaker, type: 'gems' },
-          { id: 't3', title: 'Leitura da Bíblia (4 min.)', durationMin: 4, speaker: readingMain, speakerSalaB: readingSalaB, type: 'reading' },
+          { id: 't1', title: isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)', durationMin: 10, speaker: talkSpeaker, type: 'talk' },
+          { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: gemsSpeaker, type: 'gems' },
+          { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: readingMain, speakerSalaB: readingSalaB, type: 'reading' },
         ],
         facaSeuMelhor,
         middleSong,
@@ -654,30 +660,67 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   // Groups CRUD
+  const handleOpenNewGroupModal = () => {
+    setEditingGroup(null);
+    setNewGroupNum((groupsList.length + 1).toString());
+    setNewGroupName('');
+    setNewGroupOverseer('');
+    setNewGroupAssistant('');
+    setNewGroupLocation('');
+    setNewGroupSchedule('');
+    setNewGroupMembers('');
+    setShowNewGroupModal(true);
+  };
+
+  const handleOpenEditGroupModal = (group: CongregationGroup) => {
+    setEditingGroup(group);
+    setNewGroupNum(group.number.toString());
+    setNewGroupName(group.name);
+    setNewGroupOverseer(group.overseer);
+    setNewGroupAssistant(group.assistant);
+    setNewGroupLocation(group.location);
+    setNewGroupSchedule(group.schedule);
+    setNewGroupMembers(group.members ? group.members.join('\n') : '');
+    setShowNewGroupModal(true);
+  };
+
   const handleAddGroupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseInt(newGroupNum, 10) || 1;
     const name = newGroupName.trim() || `Grupo ${num}`;
 
+    // Parse members string into array (separated by newlines or commas)
+    const membersArray = newGroupMembers
+      .split(/[\n,]+/)
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
+
     setSaving(true);
     try {
-      const newGroup: CongregationGroup = {
-        id: `group_${Date.now()}`,
+      const groupToSave: CongregationGroup = {
+        id: editingGroup ? editingGroup.id : `group_${Date.now()}`,
         number: num,
         name,
         overseer: newGroupOverseer.trim(),
         assistant: newGroupAssistant.trim(),
         location: newGroupLocation.trim() || 'Salão do Reino',
-        schedule: newGroupSchedule.trim() || 'Sábados às 09:00'
+        schedule: newGroupSchedule.trim() || 'Sábados às 09:00',
+        members: membersArray
       };
-      await saveGroup(newGroup);
-      showNotification(isPt ? 'Grupo adicionado com sucesso!' : '¡Grupo agregado!');
+      await saveGroup(groupToSave);
+      showNotification(
+        editingGroup
+          ? (isPt ? 'Grupo atualizado com sucesso!' : '¡Grupo actualizado!')
+          : (isPt ? 'Grupo adicionado com sucesso!' : '¡Grupo agregado!')
+      );
       setShowNewGroupModal(false);
+      setEditingGroup(null);
       setNewGroupName('');
       setNewGroupOverseer('');
       setNewGroupAssistant('');
       setNewGroupLocation('');
       setNewGroupSchedule('');
+      setNewGroupMembers('');
     } catch (err) {
       console.error(err);
     } finally {
@@ -799,6 +842,34 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 ? 'Painel de Gestão do Quadro de Anúncios'
                 : 'Panel de Gestión del Cuadro de Anuncios'}
             </p>
+
+            {/* Language Switcher in Login */}
+            {setLanguage && (
+              <div className="flex justify-center items-center gap-2 mt-4 pt-3 border-t border-white/20">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('pt')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isPt
+                      ? 'bg-white text-[#1C4123] shadow-xs'
+                      : 'bg-white/15 text-white hover:bg-white/25'
+                  }`}
+                >
+                  Português
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('es')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    !isPt
+                      ? 'bg-white text-[#1C4123] shadow-xs'
+                      : 'bg-white/15 text-white hover:bg-white/25'
+                  }`}
+                >
+                  Español
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Login Form */}
@@ -909,16 +980,44 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+          {setLanguage && (
+            <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-bold gap-1">
+              <Languages className="w-3.5 h-3.5 text-stone-500 ml-1 mr-0.5 shrink-0 hidden sm:inline" />
+              <button
+                type="button"
+                onClick={() => setLanguage('pt')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  isPt
+                    ? 'bg-[#1C4123] text-white shadow-xs font-extrabold'
+                    : 'text-stone-600 hover:text-stone-900 font-medium'
+                }`}
+              >
+                Português
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('es')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  !isPt
+                    ? 'bg-[#1C4123] text-white shadow-xs font-extrabold'
+                    : 'text-stone-600 hover:text-stone-900 font-medium'
+                }`}
+              >
+                Español
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => onNavigate('home')}
-            className="text-xs font-bold text-[#1C4123] bg-[#E8F0E6] hover:bg-[#D9E8D6] px-3.5 py-2 rounded-xl transition"
+            className="text-xs font-bold text-[#1C4123] bg-[#E8F0E6] hover:bg-[#D9E8D6] px-3.5 py-2 rounded-xl transition cursor-pointer"
           >
             {isPt ? 'Ver Quadro' : 'Ver Cuadro'}
           </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition border border-red-200"
+            className="flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition border border-red-200 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>{isPt ? 'Sair' : 'Salir'}</span>
@@ -1142,19 +1241,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           {/* Section: Tesouros */}
           <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
-            <h3 className="font-bold text-stone-900 text-sm">1. Tesouros da Palavra de Deus</h3>
+            <h3 className="font-bold text-stone-900 text-sm">
+              {isPt ? '1. Tesouros da Palavra de Deus' : '1. Tesoros de la Palabra de Dios'}
+            </h3>
+            <p className="text-xs text-stone-500">
+              {isPt
+                ? 'Partes fixas do programa. Informe apenas o nome dos irmãos designados.'
+                : 'Partes fijas del programa. Indique solo el nombre de los hermanos asignados.'}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="sm:col-span-2">
-                <label className="font-semibold block mb-1">Tema Discurso (10 min):</label>
-                <input
-                  type="text"
-                  value={talkTitle}
-                  onChange={(e) => setTalkTitle(e.target.value)}
-                  className="w-full border rounded-xl p-2.5 bg-white font-medium"
-                />
-              </div>
               <div>
-                <label className="font-semibold block mb-1">Orador Discurso:</label>
+                <label className="font-semibold block mb-1">
+                  {isPt ? '1. Discurso (10 min) — Orador:' : '1. Discurso (10 min) — Orador:'}
+                </label>
                 <input
                   type="text"
                   value={talkSpeaker}
@@ -1163,7 +1262,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
               <div>
-                <label className="font-semibold block mb-1">Joias Espirituais Orador:</label>
+                <label className="font-semibold block mb-1">
+                  {isPt ? '2. Joias Espirituais (10 min) — Orador:' : '2. Busquemos Perlas Escondidas (10 min) — Orador:'}
+                </label>
                 <input
                   type="text"
                   value={gemsSpeaker}
@@ -1172,7 +1273,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
               <div>
-                <label className="font-semibold block mb-1">Leitura Bíblia (Salão Principal):</label>
+                <label className="font-semibold block mb-1">
+                  {isPt ? '3. Leitura da Bíblia (Salão Principal):' : '3. Lectura de la Biblia (Salón Principal):'}
+                </label>
                 <input
                   type="text"
                   value={readingMain}
@@ -1181,9 +1284,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
               <div>
-                <label className="font-semibold block mb-1">Leitura Bíblia (Sala B):</label>
+                <label className="font-semibold block mb-1">
+                  {isPt ? '3. Leitura da Bíblia (Sala B):' : '3. Lectura de la Biblia (Sala B):'}
+                </label>
                 <input
                   type="text"
+                  placeholder={isPt ? 'Opcional' : 'Opcional'}
                   value={readingSalaB}
                   onChange={(e) => setReadingSalaB(e.target.value)}
                   className="w-full border rounded-xl p-2.5 bg-white font-medium"
@@ -1196,43 +1302,51 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-3">
             <div className="flex items-center justify-between border-b border-amber-200 pb-2">
               <div>
-                <h3 className="font-bold text-amber-950 text-sm">2. Faça Seu Melhor no Ministério</h3>
-                <p className="text-xs text-amber-800">Partes dinâmicas do programa</p>
+                <h3 className="font-bold text-amber-950 text-sm">
+                  {isPt ? '2. Faça Seu Melhor no Ministério' : '2. Seamos Mejores Maestros'}
+                </h3>
+                <p className="text-xs text-amber-800">
+                  {isPt ? 'Partes dinâmicas do programa' : 'Partes dinámicas del programa'}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   const newP: MinisterioPart = {
                     id: 'm_' + Date.now(),
-                    title: 'Iniciando Conversas (3 min.)',
+                    title: isPt ? 'Iniciando Conversas (3 min.)' : 'Empezando Conversaciones (3 min.)',
                     durationMin: 3,
-                    assignedMain: 'Estudante A',
-                    assignedAssistant: 'Ajudante B',
+                    assignedMain: '',
+                    assignedAssistant: '',
+                    assignedSalaB: '',
+                    assignedSalaBAssistant: '',
                   };
                   setFacaSeuMelhor([...facaSeuMelhor, newP]);
                 }}
-                className="flex items-center gap-1 bg-[#A07A00] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-800 transition"
+                className="flex items-center gap-1 bg-[#A07A00] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-800 transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Adicionar Parte</span>
+                <span>{isPt ? 'Adicionar Parte' : 'Agregar Intervención'}</span>
               </button>
             </div>
 
             {facaSeuMelhor.map((part, idx) => (
               <div key={part.id} className="bg-white p-3 rounded-xl border border-amber-200 space-y-2 text-xs">
                 <div className="flex justify-between items-center font-bold text-amber-900">
-                  <span>Parte #{4 + idx}</span>
+                  <span>{isPt ? `Parte #${4 + idx}` : `Intervención #${4 + idx}`}</span>
                   <button
                     type="button"
                     onClick={() => setFacaSeuMelhor(facaSeuMelhor.filter(p => p.id !== part.id))}
-                    className="text-red-600 hover:text-red-800 p-1"
+                    className="text-red-600 hover:text-red-800 p-1 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-3">
-                    <label className="font-semibold block text-[11px]">Título da Parte:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="sm:col-span-2 lg:col-span-4">
+                    <label className="font-semibold block text-[11px]">
+                      {isPt ? 'Título da Parte:' : 'Título de la Intervención:'}
+                    </label>
                     <input
                       type="text"
                       value={part.title}
@@ -1245,7 +1359,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="font-semibold block text-[11px]">Estudante (Salão Principal):</label>
+                    <label className="font-semibold block text-[11px]">
+                      {isPt ? 'Estudante (Salão Principal):' : 'Estudiante (Salón Principal):'}
+                    </label>
                     <input
                       type="text"
                       value={part.assignedMain}
@@ -1258,13 +1374,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="font-semibold block text-[11px]">Ajudante (Salão Principal):</label>
+                    <label className="font-semibold block text-[11px]">
+                      {isPt ? 'Ajudante (Salão Principal):' : 'Ayudante (Salón Principal):'}
+                    </label>
                     <input
                       type="text"
                       value={part.assignedAssistant || ''}
                       onChange={(e) =>
                         setFacaSeuMelhor(
                           facaSeuMelhor.map(p => p.id === part.id ? { ...p, assignedAssistant: e.target.value } : p)
+                        )
+                      }
+                      className="w-full border rounded-lg p-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block text-[11px]">
+                      {isPt ? 'Estudante (Sala B):' : 'Estudiante (Sala B):'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={isPt ? 'Opcional' : 'Opcional'}
+                      value={part.assignedSalaB || ''}
+                      onChange={(e) =>
+                        setFacaSeuMelhor(
+                          facaSeuMelhor.map(p => p.id === part.id ? { ...p, assignedSalaB: e.target.value } : p)
+                        )
+                      }
+                      className="w-full border rounded-lg p-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block text-[11px]">
+                      {isPt ? 'Ajudante (Sala B):' : 'Ayudante (Sala B):'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={isPt ? 'Opcional' : 'Opcional'}
+                      value={part.assignedSalaBAssistant || ''}
+                      onChange={(e) =>
+                        setFacaSeuMelhor(
+                          facaSeuMelhor.map(p => p.id === part.id ? { ...p, assignedSalaBAssistant: e.target.value } : p)
                         )
                       }
                       className="w-full border rounded-lg p-2 text-xs"
@@ -1740,7 +1890,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-stone-500 font-medium">Gerenciar grupos de pregação e saídas</p>
             </div>
             <button
-              onClick={() => setShowNewGroupModal(true)}
+              onClick={handleOpenNewGroupModal}
               disabled={saving}
               className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
             >
@@ -1754,18 +1904,42 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <div key={group.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-2 text-xs relative">
                 <div className="flex justify-between items-center font-extrabold text-[#1C4123] text-sm border-b pb-1">
                   <span>Grupo #{group.number} - {group.name}</span>
-                  <button
-                    onClick={() => handleDeleteGroup(group.id)}
-                    className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-lg transition"
-                    title="Excluir Grupo"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleOpenEditGroupModal(group)}
+                      className="text-amber-700 hover:text-amber-900 p-1 hover:bg-amber-100 rounded-lg transition"
+                      title="Editar Grupo"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGroup(group.id)}
+                      className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-lg transition"
+                      title="Excluir Grupo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <p><strong className="text-stone-800">Superintendente:</strong> {group.overseer}</p>
                 <p><strong className="text-stone-800">Ajudante:</strong> {group.assistant}</p>
                 <p><strong className="text-stone-800">Local de Saída:</strong> {group.location}</p>
                 <p><strong className="text-stone-800">Horário:</strong> {group.schedule}</p>
+                <div className="pt-2 border-t border-stone-200/80 mt-2">
+                  <p><strong className="text-stone-800">Integrantes ({group.members?.length || 0}):</strong></p>
+                  {group.members && group.members.length > 0 ? (
+                    <ul className="mt-1 space-y-1 text-stone-700 pl-1">
+                      {group.members.map((m, idx) => (
+                        <li key={idx} className="flex items-center gap-1.5 text-xs font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1C4123] shrink-0"></span>
+                          <span>{m}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-stone-500 italic mt-0.5">Nenhum integrante cadastrado</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1775,7 +1949,48 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       {/* TAB 7: CONFIGURAÇÕES */}
       {activeTab === 'settings' && (
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-stone-200 space-y-6">
-          <h2 className="text-lg font-bold text-[#1C4123]">Configurações do Sistema</h2>
+          <h2 className="text-lg font-bold text-[#1C4123]">
+            {isPt ? 'Configurações do Sistema' : 'Configuración del Sistema'}
+          </h2>
+
+          {/* Language Selection Card */}
+          <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3 max-w-md text-xs">
+            <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+              <Globe className="w-4 h-4 text-[#1C4123]" />
+              <span>{isPt ? 'Idioma do Painel e do Quadro' : 'Idioma del Panel y del Cuadro'}</span>
+            </h3>
+            <p className="text-stone-600">
+              {isPt
+                ? 'Alterne o idioma exibido em todo o quadro e no painel de gestão entre Português e Espanhol.'
+                : 'Cambie el idioma mostrado en todo el cuadro y en el panel de gestión entre Portugués y Español.'}
+            </p>
+            {setLanguage && (
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('pt')}
+                  className={`px-4 py-2 rounded-xl font-bold transition-all shadow-xs cursor-pointer ${
+                    isPt
+                      ? 'bg-[#1C4123] text-white ring-2 ring-[#1C4123]'
+                      : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+                  }`}
+                >
+                  Português
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('es')}
+                  className={`px-4 py-2 rounded-xl font-bold transition-all shadow-xs cursor-pointer ${
+                    !isPt
+                      ? 'bg-[#1C4123] text-white ring-2 ring-[#1C4123]'
+                      : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+                  }`}
+                >
+                  Español
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Change PIN Form */}
           <form onSubmit={handleSavePin} className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3 max-w-md text-xs">
@@ -2084,18 +2299,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* New Group Modal */}
+      {/* New / Edit Group Modal */}
       {showNewGroupModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <form onSubmit={handleAddGroupSubmit} className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-base text-[#1C4123] flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                <span>Novo Grupo de Serviço</span>
+                <span>
+                  {editingGroup
+                    ? (isPt ? 'Editar Grupo de Serviço' : 'Editar Grupo de Servicio')
+                    : (isPt ? 'Novo Grupo de Serviço' : 'Nuevo Grupo de Servicio')}
+                </span>
               </h3>
               <button
                 type="button"
-                onClick={() => setShowNewGroupModal(false)}
+                onClick={() => {
+                  setShowNewGroupModal(false);
+                  setEditingGroup(null);
+                }}
                 className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2169,12 +2391,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   className="w-full border rounded-xl p-2.5 bg-stone-50 text-stone-900"
                 />
               </div>
+
+              <div>
+                <label className="font-bold text-stone-800 block mb-1">
+                  {isPt ? 'Integrantes do Grupo (Nomes):' : 'Integrantes del Grupo (Nombres):'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={newGroupMembers}
+                  onChange={(e) => setNewGroupMembers(e.target.value)}
+                  placeholder={
+                    isPt
+                      ? 'Digite os nomes dos integrantes (um por linha ou separados por vírgula)...'
+                      : 'Ingrese los nombres de los integrantes (uno por línea o separados por coma)...'
+                  }
+                  className="w-full border rounded-xl p-2.5 bg-stone-50 text-stone-900 resize-y"
+                />
+                <span className="text-[10px] text-stone-500 block mt-0.5">
+                  {isPt ? 'Ex: João Silva, Maria Souza, Pedro Santos' : 'Ej: Juan Silva, María Souza'}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t">
               <button
                 type="button"
-                onClick={() => setShowNewGroupModal(false)}
+                onClick={() => {
+                  setShowNewGroupModal(false);
+                  setEditingGroup(null);
+                }}
                 className="px-4 py-2.5 rounded-xl font-bold text-xs bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer"
               >
                 Cancelar
@@ -2184,7 +2429,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 disabled={saving}
                 className="px-5 py-2.5 rounded-xl font-bold text-xs bg-[#1C4123] text-white hover:bg-[#285A31] cursor-pointer disabled:opacity-50"
               >
-                Adicionar Grupo
+                {editingGroup
+                  ? (isPt ? 'Salvar Alterações' : 'Guardar Cambios')
+                  : (isPt ? 'Adicionar Grupo' : 'Agregar Grupo')}
               </button>
             </div>
           </form>

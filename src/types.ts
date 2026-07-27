@@ -106,4 +106,5 @@ export interface CongregationGroup {
   assistant: string;
   location: string;
   schedule: string;
+  members?: string[];
 }
