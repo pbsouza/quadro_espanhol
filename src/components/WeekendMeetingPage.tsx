@@ -150,24 +150,13 @@ export const WeekendMeetingPage: React.FC<WeekendMeetingPageProps> = ({
         </div>
 
         <div className="p-4 space-y-3">
-          <div>
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
-              {isPt ? 'Artigo de Estudo:' : 'Artículo de Estudio:'}
+          <div className="bg-purple-50/50 p-2.5 rounded-lg border border-purple-100">
+            <span className="text-xs font-bold text-purple-900 block">
+              {isPt ? 'Leitor:' : 'Lector:'}
             </span>
-            <p className="text-base font-extrabold text-stone-900 mt-0.5">
-              "{meeting?.watchtowerTitle || 'Como Manter Nossa Fé Forte em Tempos de Incerteza'}"
-            </p>
-          </div>
-
-          <div className="pt-2 border-t border-stone-100">
-            <div className="bg-purple-50/50 p-2.5 rounded-lg border border-purple-100">
-              <span className="text-xs font-bold text-purple-900 block">
-                {isPt ? 'Leitor:' : 'Lector:'}
-              </span>
-              <span className="text-sm text-stone-900 font-medium">
-                {meeting?.watchtowerReader || '---'}
-              </span>
-            </div>
+            <span className="text-sm text-stone-900 font-medium">
+              {meeting?.watchtowerReader || '---'}
+            </span>
           </div>
 
           <div className="pt-3 border-t border-stone-100 space-y-1.5">

@@ -1488,15 +1488,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <h3 className="font-bold text-stone-900 text-sm pt-2 border-t">Estudo de A Sentinela</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="font-semibold block mb-1">Título do Artigo de A Sentinela:</label>
-                <input
-                  type="text"
-                  value={wtTitle}
-                  onChange={(e) => setWtTitle(e.target.value)}
-                  className="w-full border rounded-xl p-2.5 bg-white font-medium"
-                />
-              </div>
-              <div className="sm:col-span-2">
                 <label className="font-semibold block mb-1">Leitor de A Sentinela:</label>
                 <input
                   type="text"

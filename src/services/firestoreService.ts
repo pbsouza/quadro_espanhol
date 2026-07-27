@@ -39,6 +39,10 @@ export function subscribeMidweekMeetings(
   onUpdate: (data: MidweekMeeting[]) => void,
   onError?: (err: Error) => void
 ) {
+  if (!db) {
+    onUpdate(INITIAL_MIDWEEK_MEETINGS);
+    return () => {};
+  }
   try {
     const colRef = collection(db, MIDWEEK_COL);
     return onSnapshot(
@@ -74,6 +78,10 @@ export function subscribeMidweekMeetings(
 export function subscribeWeekendMeetings(
   onUpdate: (data: WeekendMeeting[]) => void
 ) {
+  if (!db) {
+    onUpdate(INITIAL_WEEKEND_MEETINGS);
+    return () => {};
+  }
   try {
     const colRef = collection(db, WEEKEND_COL);
     return onSnapshot(
@@ -102,6 +110,10 @@ export function subscribeWeekendMeetings(
 export function subscribeAnnouncements(
   onUpdate: (data: Announcement[]) => void
 ) {
+  if (!db) {
+    onUpdate(INITIAL_ANNOUNCEMENTS);
+    return () => {};
+  }
   try {
     const colRef = collection(db, ANNOUNCEMENTS_COL);
     return onSnapshot(
@@ -128,6 +140,10 @@ export function subscribeAnnouncements(
 
 // Subscribe to Cleaning Schedule
 export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) {
+  if (!db) {
+    onUpdate(INITIAL_CLEANING);
+    return () => {};
+  }
   try {
     const colRef = collection(db, CLEANING_COL);
     return onSnapshot(
@@ -154,6 +170,10 @@ export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) 
 
 // Subscribe to Public Witnessing
 export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[]) => void) {
+  if (!db) {
+    onUpdate(INITIAL_WITNESSING);
+    return () => {};
+  }
   try {
     const colRef = collection(db, WITNESSING_COL);
     return onSnapshot(
@@ -180,6 +200,10 @@ export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[])
 
 // Subscribe to Groups
 export function subscribeGroups(onUpdate: (data: CongregationGroup[]) => void) {
+  if (!db) {
+    onUpdate(INITIAL_GROUPS);
+    return () => {};
+  }
   try {
     const colRef = collection(db, GROUPS_COL);
     return onSnapshot(
