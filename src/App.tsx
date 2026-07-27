@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   AppLanguage, 
   PageView, 
@@ -17,6 +17,7 @@ import {
   subscribeWitnessing, 
   subscribeGroups 
 } from './services/firestoreService';
+import { findCurrentWeekIndex } from './utils/weekUtils';
 
 import { HomePage } from './components/HomePage';
 import { MidweekMeetingPage } from './components/MidweekMeetingPage';
@@ -43,12 +44,21 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
 
-  // Subscribe to real-time Firestore collections
+  // Subscribe to real-time Firestore collections with local cache fallback
   useEffect(() => {
+    let hasSetInitialWeek = false;
+
     const unsubMidweek = subscribeMidweekMeetings(
       (data) => {
         setMidweekMeetings(data);
         setConnectionError(false);
+
+        // Position on current week automatically when data arrives
+        if (!hasSetInitialWeek && data.length > 0) {
+          const currentIdx = findCurrentWeekIndex(data);
+          setCurrentWeekIndex(currentIdx);
+          hasSetInitialWeek = true;
+        }
       },
       () => setConnectionError(true)
     );

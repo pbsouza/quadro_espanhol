@@ -3,6 +3,7 @@ import { WeekendMeeting, AppLanguage, PageView } from '../types';
 import { ArrowLeft, Menu, BookOpen, User, Music, Mic } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
+import { findCurrentWeekIndex } from '../utils/weekUtils';
 
 interface WeekendMeetingPageProps {
   meeting: WeekendMeeting | undefined;
@@ -68,21 +69,30 @@ export const WeekendMeetingPage: React.FC<WeekendMeetingPageProps> = ({
               &lt;&lt; {t.previousWeek}
             </button>
 
-            <span className="text-xs sm:text-sm font-black text-[#1C4123] text-center bg-[#E8F0E6] px-3 py-2 rounded-xl border border-[#D0E2CC] flex-1">
-              📅 {meeting?.weekLabel || '3 de Agosto de 2025'}
-            </span>
+            <button
+              onClick={() => setWeekIndex(findCurrentWeekIndex(allMeetings))}
+              className="px-3 py-2 bg-white text-[#1C4123] border border-[#1C4123] rounded-xl text-xs sm:text-sm font-bold hover:bg-stone-50 transition shadow-xs cursor-pointer"
+            >
+              {t.currentWeek}
+            </button>
 
             <button
               onClick={() => setWeekIndex(Math.min(allMeetings.length - 1, currentWeekIndex + 1))}
               disabled={currentWeekIndex >= allMeetings.length - 1}
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border transition shadow-xs cursor-pointer ${
+              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition shadow-xs cursor-pointer ${
                 currentWeekIndex >= allMeetings.length - 1
-                  ? 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
-                  : 'bg-white text-[#5B3770] border-[#5B3770] hover:bg-purple-50'
+                  ? 'bg-purple-300 cursor-not-allowed'
+                  : 'bg-[#5B3770] hover:bg-[#4A2B5C]'
               }`}
             >
               {t.nextWeek} &gt;&gt;
             </button>
+          </div>
+
+          <div className="text-center bg-[#E8F0E6] py-1.5 px-3 rounded-lg border border-[#D0E2CC]">
+            <span className="text-xs sm:text-sm font-bold text-[#1C4123]">
+              📅 {meeting?.weekLabel || '3 de Agosto de 2025'}
+            </span>
           </div>
         </div>
       ) : (

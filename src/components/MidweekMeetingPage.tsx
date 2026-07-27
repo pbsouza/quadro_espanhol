@@ -3,6 +3,7 @@ import { MidweekMeeting, AppLanguage, PageView } from '../types';
 import { Menu, BookOpen, User, Music, Gem, Wheat, AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
+import { findCurrentWeekIndex } from '../utils/weekUtils';
 
 interface MidweekMeetingPageProps {
   meeting: MidweekMeeting | undefined;
@@ -99,7 +100,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
           </button>
 
           <button
-            onClick={() => setWeekIndex(0)}
+            onClick={() => setWeekIndex(findCurrentWeekIndex(allMeetings))}
             className="px-3 py-2 bg-white text-[#1C4123] border border-[#1C4123] rounded-xl text-xs sm:text-sm font-bold hover:bg-stone-50 transition shadow-xs cursor-pointer"
           >
             {t.currentWeek}

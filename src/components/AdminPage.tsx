@@ -1131,6 +1131,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-stone-500 font-medium">
                 {activeMidweek?.weekLabel || 'Semana Ativa'}
               </p>
+              <div className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-semibold">
+                <span>💾 {isPt ? 'Economia do Firebase Ativa: Exibindo 10 semanas anteriores, semana atual e 10 próximas (Cache Local)' : 'Optimización Firebase Activa: 10 semanas pasadas, actual e 10 futuras (Cache Local)'}</span>
+              </div>
             </div>
             <button
               onClick={handleSaveMidweek}
