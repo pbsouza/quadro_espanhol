@@ -54,6 +54,8 @@ import {
   Languages
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
+import { FileImportModal } from './FileImportModal';
+import { ParsedMeetingData } from '../utils/fileImportParser';
 
 const formatWeekLabelFromDate = (dateStr: string, isPtLang: boolean = true): string => {
   if (!dateStr) return '';
@@ -172,6 +174,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const activeWeekend = allWeekendList[safeWeekendIndex] || allWeekendList[0];
 
   // Modals state
+  const [showFileImportModal, setShowFileImportModal] = useState(false);
   const [showNewMidweekModal, setShowNewMidweekModal] = useState(false);
   const [newMidweekDate, setNewMidweekDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newMidweekLabel, setNewMidweekLabel] = useState(() => formatWeekLabelFromDate(new Date().toISOString().split('T')[0], true));
@@ -329,6 +332,170 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setWeekendFinalPrayer(activeWeekend.finalPrayer || '');
     }
   }, [selectedWeekendIndex, weekendMeetings]);
+
+  const handleApplyParsedData = (data: ParsedMeetingData) => {
+    if (data.president) setPresident(data.president);
+    if (data.initialSong) setInitialSong(data.initialSong);
+    if (data.initialPrayer) setInitialPrayer(data.initialPrayer);
+    if (data.counselorSalaB) setCounselorSalaB(data.counselorSalaB);
+    if (data.talkTitle) setTalkTitle(data.talkTitle);
+    if (data.talkSpeaker) setTalkSpeaker(data.talkSpeaker);
+    if (data.gemsSpeaker) setGemsSpeaker(data.gemsSpeaker);
+    if (data.readingMain) setReadingMain(data.readingMain);
+    if (data.readingSalaB) setReadingSalaB(data.readingSalaB);
+    if (data.facaSeuMelhor && data.facaSeuMelhor.length > 0) {
+      setFacaSeuMelhor(data.facaSeuMelhor as MinisterioPart[]);
+    }
+    if (data.middleSong) setMiddleSong(data.middleSong);
+    if (data.nossaVidaCrista && data.nossaVidaCrista.length > 0) {
+      setNossaVidaCrista(data.nossaVidaCrista as VidaCristaPart[]);
+    }
+    if (data.finalSong) setFinalSong(data.finalSong);
+    if (data.finalPrayer) setFinalPrayer(data.finalPrayer);
+
+    if (data.publicTalkTitle) setWeekendTalkTitle(data.publicTalkTitle);
+    if (data.speakerName) setWeekendSpeaker(data.speakerName);
+    if (data.speakerCongregation) setWeekendCongregation(data.speakerCongregation);
+    if (data.weekendPresident) setWeekendPresident(data.weekendPresident);
+    if (data.watchtowerTitle) setWtTitle(data.watchtowerTitle);
+    if (data.watchtowerConductor) setWtConductor(data.watchtowerConductor);
+    if (data.watchtowerReader) setWtReader(data.watchtowerReader);
+    if (data.weekendFinalSong) setWeekendFinalSong(data.weekendFinalSong);
+    if (data.weekendFinalPrayer) setWeekendFinalPrayer(data.weekendFinalPrayer);
+
+    setSuccessMsg(isPt ? 'Partes importadas e preenchidas com sucesso no formulário!' : '¡Partes importadas y llenadas con éxito!');
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const handleApplyAllParsedWeeks = async (weeks: ParsedMeetingData[]) => {
+    setSaving(true);
+    try {
+      const usedMidweekIds = new Set<string>();
+      const usedWeekendIds = new Set<string>();
+      const savedWeekNames: string[] = [];
+
+      for (let i = 0; i < weeks.length; i++) {
+        const data = weeks[i];
+
+        // Extract numbers from label to safely compare start/end days
+        const extractNums = (str?: string) => (str ? (str.match(/\d+/g) || []).map(Number) : []);
+        const dataNums = extractNums(data.weekLabel);
+
+        // 1. Find or match Midweek Meeting without reusing IDs
+        let existingMidweek = allMidweekList.find(m => {
+          if (usedMidweekIds.has(m.id)) return false;
+          if (data.weekDate && m.weekId === data.weekDate) return true;
+          const mNums = extractNums(m.weekLabel);
+          if (dataNums.length >= 2 && mNums.length >= 2) {
+            return dataNums[0] === mNums[0] && dataNums[1] === mNums[1];
+          }
+          return false;
+        });
+
+        // Fallback: match by index if not yet claimed
+        if (!existingMidweek && allMidweekList[i] && !usedMidweekIds.has(allMidweekList[i].id)) {
+          existingMidweek = allMidweekList[i];
+        }
+
+        const uniqueSuffix = `${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`;
+        const midweekId = existingMidweek?.id || `midweek_${uniqueSuffix}`;
+        const weekId = existingMidweek?.weekId || data.weekDate || `week_${uniqueSuffix}`;
+        const weekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
+
+        if (existingMidweek) {
+          usedMidweekIds.add(existingMidweek.id);
+        } else {
+          usedMidweekIds.add(midweekId);
+        }
+
+        const updatedMidweek: MidweekMeeting = {
+          id: midweekId,
+          weekId,
+          weekLabel,
+          weekLabelEs: existingMidweek?.weekLabelEs,
+          president: data.president || existingMidweek?.president || '',
+          initialSong: data.initialSong || existingMidweek?.initialSong || '1',
+          initialPrayer: data.initialPrayer || existingMidweek?.initialPrayer || '',
+          counselorSalaB: data.counselorSalaB || existingMidweek?.counselorSalaB || '',
+          tesouros: [
+            { id: 't1', title: isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)', durationMin: 10, speaker: data.talkSpeaker || existingMidweek?.tesouros?.[0]?.speaker || '', type: 'talk' },
+            { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: data.gemsSpeaker || existingMidweek?.tesouros?.[1]?.speaker || '', type: 'gems' },
+            { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: data.readingMain || existingMidweek?.tesouros?.[2]?.speaker || '', speakerSalaB: data.readingSalaB || existingMidweek?.tesouros?.[2]?.speakerSalaB || '', type: 'reading' },
+          ],
+          facaSeuMelhor: (data.facaSeuMelhor && data.facaSeuMelhor.length > 0)
+            ? (data.facaSeuMelhor as MinisterioPart[])
+            : (existingMidweek?.facaSeuMelhor || []),
+          middleSong: data.middleSong || existingMidweek?.middleSong || '',
+          nossaVidaCrista: (data.nossaVidaCrista && data.nossaVidaCrista.length > 0)
+            ? (data.nossaVidaCrista as VidaCristaPart[])
+            : (existingMidweek?.nossaVidaCrista || []),
+          finalSong: data.finalSong || existingMidweek?.finalSong || '',
+          finalPrayer: data.finalPrayer || existingMidweek?.finalPrayer || '',
+        };
+
+        await saveMidweekMeeting(updatedMidweek);
+
+        // 2. Find or match Weekend Meeting without reusing IDs
+        let existingWeekend = allWeekendList.find(w => {
+          if (usedWeekendIds.has(w.id)) return false;
+          if (data.weekDate && w.weekId === data.weekDate) return true;
+          const wNums = extractNums(w.weekLabel);
+          if (dataNums.length >= 2 && wNums.length >= 2) {
+            return dataNums[0] === wNums[0] && dataNums[1] === wNums[1];
+          }
+          return false;
+        });
+
+        if (!existingWeekend && allWeekendList[i] && !usedWeekendIds.has(allWeekendList[i].id)) {
+          existingWeekend = allWeekendList[i];
+        }
+
+        const weekendId = existingWeekend?.id || `weekend_${uniqueSuffix}`;
+
+        if (existingWeekend) {
+          usedWeekendIds.add(existingWeekend.id);
+        } else {
+          usedWeekendIds.add(weekendId);
+        }
+
+        const updatedWeekend: WeekendMeeting = {
+          id: weekendId,
+          weekId,
+          weekLabel,
+          publicTalkTitle: data.publicTalkTitle || existingWeekend?.publicTalkTitle || '',
+          speakerName: data.speakerName || existingWeekend?.speakerName || '',
+          speakerCongregation: data.speakerCongregation || existingWeekend?.speakerCongregation || '',
+          president: data.weekendPresident || existingWeekend?.president || '',
+          initialSong: data.weekendInitialSong || existingWeekend?.initialSong || '1',
+          watchtowerTitle: data.watchtowerTitle || existingWeekend?.watchtowerTitle || 'Estudo de A Sentinela',
+          watchtowerConductor: data.watchtowerConductor || existingWeekend?.watchtowerConductor || '',
+          watchtowerReader: data.watchtowerReader || existingWeekend?.watchtowerReader || '',
+          finalSong: data.weekendFinalSong || existingWeekend?.finalSong || '2',
+          finalPrayer: data.weekendFinalPrayer || existingWeekend?.finalPrayer || '',
+        };
+
+        await saveWeekendMeeting(updatedWeekend);
+
+        savedWeekNames.push(weekLabel);
+
+        // 3. Update form fields for first week
+        if (i === 0) {
+          handleApplyParsedData(data);
+        }
+      }
+
+      showNotification(
+        isPt
+          ? `Sucesso! ${weeks.length} semanas foram gravadas no Firebase (${savedWeekNames.slice(0, 2).join(', ')}${savedWeekNames.length > 2 ? '...' : ''})!`
+          : `¡Éxito! Se guardaron ${weeks.length} semanas en Firebase!`
+      );
+    } catch (err) {
+      console.error('Error applying all parsed weeks:', err);
+      alert(isPt ? 'Erro ao salvar todas as semanas.' : 'Error al guardar todas las semanas.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // New Announcement Form
   const [annTitle, setAnnTitle] = useState('');
@@ -1131,18 +1298,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-stone-500 font-medium">
                 {activeMidweek?.weekLabel || 'Semana Ativa'}
               </p>
-              <div className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-semibold">
-                <span>💾 {isPt ? 'Economia do Firebase Ativa: Exibindo 10 semanas anteriores, semana atual e 10 próximas (Cache Local)' : 'Optimización Firebase Activa: 10 semanas pasadas, actual e 10 futuras (Cache Local)'}</span>
-              </div>
             </div>
-            <button
-              onClick={handleSaveMidweek}
-              disabled={saving}
-              className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+                title={isPt ? 'Importar partes por foto (Visão IA) ou arquivo PDF/TXT' : 'Importar partes por foto (Visión IA) o archivo PDF/TXT'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT' : 'Importar Foto / PDF / TXT'}</span>
+              </button>
+              <button
+                onClick={handleSaveMidweek}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Week Selection Dropdown & Actions */}
@@ -1542,14 +1717,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {activeWeekend?.weekLabel || 'Domingo'}
               </p>
             </div>
-            <button
-              onClick={handleSaveWeekend}
-              disabled={saving}
-              className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+                title={isPt ? 'Importar partes por foto (Visão IA) ou arquivo PDF/TXT' : 'Importar partes por foto (Visión IA) o archivo PDF/TXT'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT' : 'Importar Foto / PDF / TXT'}</span>
+              </button>
+              <button
+                onClick={handleSaveWeekend}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Week Selection Dropdown & Actions */}
@@ -2526,6 +2712,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </form>
         </div>
       )}
+
+      {/* Modal Importar de PDF / TXT / RTF */}
+      <FileImportModal
+        isOpen={showFileImportModal}
+        onClose={() => setShowFileImportModal(false)}
+        isPt={isPt}
+        onApplyParsedData={handleApplyParsedData}
+        onApplyAllParsedWeeks={handleApplyAllParsedWeeks}
+      />
 
       {/* Floating Accessibility Text Scale Selector Bar */}
       <TextScaleBar textScale={textScale} setTextScale={setTextScale} language={language} />
