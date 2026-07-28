@@ -153,12 +153,14 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
           </span>
         </div>
 
-        <div className="text-sm pl-7 pt-1 border-t border-purple-200/60 mt-1">
-          <span className="font-bold">
-            {t.counselorSalaB}:{' '}
-            <span className="font-normal text-stone-900">{meeting?.counselorSalaB || '---'}</span>
-          </span>
-        </div>
+        {meeting?.counselorSalaB && meeting.counselorSalaB.trim() !== '' && meeting.counselorSalaB !== '---' && (
+          <div className="text-sm pl-7 pt-1 border-t border-purple-200/60 mt-1">
+            <span className="font-bold">
+              {t.counselorSalaB}:{' '}
+              <span className="font-normal text-stone-900">{meeting.counselorSalaB}</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* SECTION 1: TESOUROS DA PALAVRA DE DEUS */}

@@ -3,7 +3,8 @@ import {
   doc, 
   setDoc, 
   onSnapshot, 
-  deleteDoc
+  deleteDoc,
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { 
@@ -485,4 +486,28 @@ export async function seedAllData(): Promise<void> {
   await seedCollection(CLEANING_COL, INITIAL_CLEANING);
   await seedCollection(WITNESSING_COL, INITIAL_WITNESSING);
   await seedCollection(GROUPS_COL, INITIAL_GROUPS);
+}
+
+// Clear All Database Data Permanently
+export async function clearAllDatabaseData(): Promise<void> {
+  cacheService.setMidweek([]);
+  cacheService.setWeekend([]);
+  cacheService.setAnnouncements([]);
+  cacheService.setCleaning([]);
+  cacheService.setWitnessing([]);
+  cacheService.setGroups([]);
+
+  if (db) {
+    const cols = [MIDWEEK_COL, WEEKEND_COL, ANNOUNCEMENTS_COL, CLEANING_COL, WITNESSING_COL, GROUPS_COL];
+    for (const cName of cols) {
+      try {
+        const snapshot = await getDocs(collection(db, cName));
+        for (const docItem of snapshot.docs) {
+          await deleteDoc(doc(db, cName, docItem.id));
+        }
+      } catch (err) {
+        console.warn(`Error clearing collection ${cName}:`, err);
+      }
+    }
+  }
 }

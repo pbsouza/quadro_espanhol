@@ -139,6 +139,13 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
         }),
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Server non-JSON image response:', text);
+        throw new Error(isPt ? 'Erro de comunicação com o servidor de IA. Tente novamente.' : 'Error de comunicación con el servidor IA.');
+      }
+
       const resData = await response.json();
 
       if (!response.ok || !resData.success) {
@@ -213,12 +220,18 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
           }),
         });
 
-        const resData = await response.json();
-        if (response.ok && resData.success) {
-          const list = resData.weeks && resData.weeks.length > 0 ? resData.weeks : (resData.data ? [resData.data] : []);
-          if (list.length > 0) {
-            aiWeeksResult = formatRawWeeks(list);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const resData = await response.json();
+          if (response.ok && resData.success) {
+            const list = resData.weeks && resData.weeks.length > 0 ? resData.weeks : (resData.data ? [resData.data] : []);
+            if (list.length > 0) {
+              aiWeeksResult = formatRawWeeks(list);
+            }
           }
+        } else {
+          const text = await response.text();
+          console.warn('Server non-JSON doc response:', text);
         }
       } catch (aiErr) {
         console.warn('AI document parsing fallback to local parser:', aiErr);

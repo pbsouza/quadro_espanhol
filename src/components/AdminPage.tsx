@@ -24,8 +24,9 @@ import {
   deleteWitnessingSchedule,
   saveGroup,
   deleteGroup,
-  seedAllData 
+  clearAllDatabaseData
 } from '../services/firestoreService';
+import { getMondayOf, formatYYYYMMDD } from '../utils/weekUtils';
 import { 
   Lock, 
   Unlock, 
@@ -265,6 +266,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Clear Database Confirmation States
+  const [showClearConfirmText, setShowClearConfirmText] = useState(false);
+  const [confirmInputText, setConfirmInputText] = useState('');
+
   // Local editable state for Midweek
   const [president, setPresident] = useState(activeMidweek?.president || '');
   const [initialSong, setInitialSong] = useState(activeMidweek?.initialSong || '');
@@ -397,9 +402,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           existingMidweek = allMidweekList[i];
         }
 
-        const uniqueSuffix = `${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`;
-        const midweekId = existingMidweek?.id || `midweek_${uniqueSuffix}`;
-        const weekId = existingMidweek?.weekId || data.weekDate || `week_${uniqueSuffix}`;
+        const baseMonday = getMondayOf(new Date());
+        baseMonday.setDate(baseMonday.getDate() + (i * 7));
+        const calculatedWeekDate = formatYYYYMMDD(baseMonday);
+
+        const weekId = existingMidweek?.weekId || data.weekDate || calculatedWeekDate;
+        const midweekId = existingMidweek?.id || `midweek_${weekId}`;
         const weekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
 
         if (existingMidweek) {
@@ -450,7 +458,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           existingWeekend = allWeekendList[i];
         }
 
-        const weekendId = existingWeekend?.id || `weekend_${uniqueSuffix}`;
+        const weekendId = existingWeekend?.id || `weekend_${weekId}`;
 
         if (existingWeekend) {
           usedWeekendIds.add(existingWeekend.id);
@@ -963,25 +971,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     });
   };
 
-  // Seed / Reset Data
-  const handleResetData = () => {
+  // Delete / Clear All Database Data
+  const handleStartClearAllData = () => {
     setConfirmModal({
       isOpen: true,
-      title: isPt ? 'Restaurar Banco de Dados' : 'Restaurar Datos',
-      message: isPt ? 'Deseja restaurar todos os dados do banco Firebase para os valores originais?' : '¿Restaurar datos originales?',
+      title: isPt ? '⚠️ EXCLUIR TODOS OS DADOS DO SISTEMA' : '⚠️ ELIMINAR TODOS LOS DATOS',
+      message: isPt 
+        ? 'Atenção: Esta ação irá remover PERMANENTEMENTE todas as semanas de reuniões, anúncios, escalas de limpeza, grupos e pontos de testemunho do Firebase. Deseja continuar?' 
+        : '¡Atención! Esta acción eliminará PERMANENTEMENTE todos los datos de Firebase.',
       onConfirm: async () => {
-        setSaving(true);
-        try {
-          await seedAllData();
-          showNotification(isPt ? 'Banco de dados restaurado com sucesso!' : '¡Base de datos restaurada!');
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setSaving(false);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setShowClearConfirmText(true);
+        setConfirmInputText('');
       }
     });
+  };
+
+  const handleFinalClearAllData = async () => {
+    if (confirmInputText.trim().toUpperCase() !== 'EXCLUIR') {
+      alert(isPt ? 'Digite exatamente "EXCLUIR" para confirmar a exclusão.' : 'Escriba exactamente "EXCLUIR" para confirmar.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await clearAllDatabaseData();
+      setShowClearConfirmText(false);
+      showNotification(isPt ? 'Todos os dados do banco foram excluídos com sucesso!' : '¡Todos los datos han sido eliminados!');
+    } catch (err) {
+      console.error('Error clearing database:', err);
+      alert(isPt ? 'Erro ao excluir banco de dados.' : 'Error al eliminar base de datos.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   /* ================= LOGIN SCREEN ================= */
@@ -2207,20 +2228,78 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </button>
           </form>
 
-          {/* Reset Firebase Data */}
-          <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 space-y-3 max-w-md text-xs">
-            <h3 className="font-bold text-amber-950 text-sm">Restaurar Banco de Dados</h3>
-            <p className="text-amber-800">
-              Recarrega o Firebase Firestore com a programação de reuniões, anúncios e grupos padrão originais.
+          {/* Clear Firebase Data Permanently */}
+          <div className="bg-red-50/80 p-5 rounded-2xl border border-red-200 space-y-3 max-w-md text-xs shadow-xs">
+            <div className="flex items-center gap-2 text-red-700 font-extrabold text-sm">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span>{isPt ? 'Excluir Todos os Dados do Sistema' : 'Eliminar Todos los Datos'}</span>
+            </div>
+            <p className="text-red-900/80 font-medium leading-relaxed">
+              {isPt 
+                ? 'Atenção: Esta opção apaga permanentemente todas as reuniões, anúncios, escalas de limpeza, grupos e locais de testemunho no Firebase. Utilize apenas se desejar reiniciar o quadro do zero.'
+                : 'Atención: Esta opción elimina permanentemente todas las reuniones, anuncios y grupos en Firebase.'}
             </p>
             <button
-              onClick={handleResetData}
+              onClick={handleStartClearAllData}
               disabled={saving}
-              className="flex items-center gap-2 bg-stone-800 hover:bg-stone-900 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-xs"
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Restaurar Dados Iniciais</span>
+              <Trash2 className="w-4 h-4" />
+              <span>{isPt ? 'Excluir Todos os Dados do Banco' : 'Eliminar Todos los Datos'}</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Double Confirmation Modal for Clear All Data */}
+      {showClearConfirmText && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fadeIn backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-3 bg-red-100 rounded-2xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-stone-900">
+                  {isPt ? 'Confirmação de Exclusão Definitiva' : 'Confirmación de Eliminación Definitiva'}
+                </h3>
+                <p className="text-xs text-red-600 font-bold">
+                  {isPt ? 'Esta ação não poderá ser desfeita!' : '¡Esta acción no se puede deshacer!'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-700 font-medium leading-relaxed">
+              {isPt
+                ? 'Para confirmar a exclusão total de todos os dados do sistema no Firebase, digite a palavra "EXCLUIR" no campo abaixo:'
+                : 'Para confirmar la eliminación total, escriba la palabra "EXCLUIR" a continuación:'}
+            </p>
+
+            <input
+              type="text"
+              value={confirmInputText}
+              onChange={(e) => setConfirmInputText(e.target.value)}
+              placeholder={isPt ? 'Digite EXCLUIR aqui...' : 'Escriba EXCLUIR aquí...'}
+              className="w-full border-2 border-red-300 focus:border-red-600 rounded-xl p-3 text-sm font-bold text-red-900 bg-red-50/50 uppercase tracking-wider"
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirmText(false)}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-stone-100 text-stone-700 hover:bg-stone-200 transition cursor-pointer"
+              >
+                {isPt ? 'Cancelar' : 'Cancelar'}
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalClearAllData}
+                disabled={saving || confirmInputText.trim().toUpperCase() !== 'EXCLUIR'}
+                className="px-5 py-2.5 rounded-xl font-extrabold text-xs bg-red-600 hover:bg-red-700 text-white transition shadow-md cursor-pointer disabled:opacity-40"
+              >
+                {saving ? (isPt ? 'Excluindo...' : 'Eliminando...') : (isPt ? 'Confirmar Exclusão' : 'Confirmar Eliminación')}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -103,7 +103,7 @@ Regras:
 5. Retorne APENAS o JSON puro.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
         contents: {
           parts: [
             {
@@ -242,7 +242,7 @@ Regras:
       contentsParts.push({ text: prompt });
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
         contents: {
           parts: contentsParts,
         },
