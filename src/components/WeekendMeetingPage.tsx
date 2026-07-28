@@ -27,7 +27,50 @@ export const WeekendMeetingPage: React.FC<WeekendMeetingPageProps> = ({
   const t = getTranslation(language);
   const [textScale, setTextScale] = useState<number>(1);
 
-  const hasMultipleWeeks = allMeetings.length > 1 && setWeekIndex;
+  if (!meeting && allMeetings.length > 0) {
+    meeting = allMeetings[0];
+  }
+
+  if (!meeting || allMeetings.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] text-[#1A2E1A] font-sans pb-28 pt-4 px-3 sm:px-4 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto" style={{ zoom: textScale }}>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => onNavigate('home')}
+            className="p-2 text-[#1C4123] hover:bg-stone-200/60 rounded-xl transition flex items-center gap-1 text-sm font-semibold cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="hidden sm:inline">{t.home}</span>
+          </button>
+
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#1C4123] tracking-tight text-center flex-1 mx-2">
+            {t.weekendTitle}
+          </h1>
+
+          <button
+            onClick={onToggleMenu}
+            className="p-2.5 bg-[#1C4123] text-white rounded-xl shadow-xs hover:bg-[#285A31] transition cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl p-8 border border-stone-200 shadow-xs text-center my-8">
+          <BookOpen className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-stone-800 mb-1">
+            {language === 'pt' ? 'Nenhum dado disponível' : 'No hay datos disponibles'}
+          </h3>
+          <p className="text-stone-500 text-sm">
+            {language === 'pt'
+              ? 'Não há programação do fim de semana disponível no momento.'
+              : 'No hay programación del fin de semana disponible en este momento.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasMultipleWeeks = allMeetings.length > 1 && Boolean(setWeekIndex);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A2E1A] font-sans pb-28 pt-4 px-3 sm:px-4 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto" style={{ zoom: textScale }}>

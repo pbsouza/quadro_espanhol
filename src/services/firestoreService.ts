@@ -41,11 +41,11 @@ export function subscribeMidweekMeetings(
 ) {
   // 1. Instantly deliver cached data from LocalStorage if available
   const cached = cacheService.getMidweek<MidweekMeeting>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     const filteredCached = sortMeetingsChronologically(filterMeetingsBy21Weeks(cached));
     onUpdate(filteredCached);
   } else {
-    onUpdate(INITIAL_MIDWEEK_MEETINGS);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -56,10 +56,8 @@ export function subscribeMidweekMeetings(
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          // Seed automatically if empty with 21 weeks
-          seedCollection(MIDWEEK_COL, INITIAL_MIDWEEK_MEETINGS);
-          cacheService.setMidweek(INITIAL_MIDWEEK_MEETINGS);
-          onUpdate(INITIAL_MIDWEEK_MEETINGS);
+          cacheService.setMidweek([]);
+          onUpdate([]);
         } else {
           const rawList: MidweekMeeting[] = [];
           snapshot.forEach((doc) => {
@@ -77,14 +75,14 @@ export function subscribeMidweekMeetings(
       (error) => {
         console.warn('Firestore subscription error (midweek):', error);
         if (onError) onError(error);
-        const fallback = cacheService.getMidweek<MidweekMeeting>() || INITIAL_MIDWEEK_MEETINGS;
+        const fallback = cacheService.getMidweek<MidweekMeeting>() || [];
         onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
       }
     );
   } catch (err) {
     console.warn('Error connecting to firestore midweek:', err);
     if (onError && err instanceof Error) onError(err);
-    const fallback = cacheService.getMidweek<MidweekMeeting>() || INITIAL_MIDWEEK_MEETINGS;
+    const fallback = cacheService.getMidweek<MidweekMeeting>() || [];
     onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
     return () => {};
   }
@@ -95,10 +93,10 @@ export function subscribeWeekendMeetings(
   onUpdate: (data: WeekendMeeting[]) => void
 ) {
   const cached = cacheService.getWeekend<WeekendMeeting>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(cached)));
   } else {
-    onUpdate(INITIAL_WEEKEND_MEETINGS);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -109,9 +107,8 @@ export function subscribeWeekendMeetings(
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          seedCollection(WEEKEND_COL, INITIAL_WEEKEND_MEETINGS);
-          cacheService.setWeekend(INITIAL_WEEKEND_MEETINGS);
-          onUpdate(INITIAL_WEEKEND_MEETINGS);
+          cacheService.setWeekend([]);
+          onUpdate([]);
         } else {
           const rawList: WeekendMeeting[] = [];
           snapshot.forEach((doc) => {
@@ -123,12 +120,12 @@ export function subscribeWeekendMeetings(
         }
       },
       () => {
-        const fallback = cacheService.getWeekend<WeekendMeeting>() || INITIAL_WEEKEND_MEETINGS;
+        const fallback = cacheService.getWeekend<WeekendMeeting>() || [];
         onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
       }
     );
   } catch {
-    const fallback = cacheService.getWeekend<WeekendMeeting>() || INITIAL_WEEKEND_MEETINGS;
+    const fallback = cacheService.getWeekend<WeekendMeeting>() || [];
     onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
     return () => {};
   }
@@ -139,10 +136,10 @@ export function subscribeAnnouncements(
   onUpdate: (data: Announcement[]) => void
 ) {
   const cached = cacheService.getAnnouncements<Announcement>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     onUpdate(cached);
   } else {
-    onUpdate(INITIAL_ANNOUNCEMENTS);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -153,9 +150,8 @@ export function subscribeAnnouncements(
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          seedCollection(ANNOUNCEMENTS_COL, INITIAL_ANNOUNCEMENTS);
-          cacheService.setAnnouncements(INITIAL_ANNOUNCEMENTS);
-          onUpdate(INITIAL_ANNOUNCEMENTS);
+          cacheService.setAnnouncements([]);
+          onUpdate([]);
         } else {
           const list: Announcement[] = [];
           snapshot.forEach((doc) => {
@@ -166,12 +162,12 @@ export function subscribeAnnouncements(
         }
       },
       () => {
-        const fallback = cacheService.getAnnouncements<Announcement>() || INITIAL_ANNOUNCEMENTS;
+        const fallback = cacheService.getAnnouncements<Announcement>() || [];
         onUpdate(fallback);
       }
     );
   } catch {
-    const fallback = cacheService.getAnnouncements<Announcement>() || INITIAL_ANNOUNCEMENTS;
+    const fallback = cacheService.getAnnouncements<Announcement>() || [];
     onUpdate(fallback);
     return () => {};
   }
@@ -180,10 +176,10 @@ export function subscribeAnnouncements(
 // Subscribe to Cleaning Schedule
 export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) {
   const cached = cacheService.getCleaning<CleaningSchedule>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     onUpdate(cached);
   } else {
-    onUpdate(INITIAL_CLEANING);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -194,9 +190,8 @@ export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) 
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          seedCollection(CLEANING_COL, INITIAL_CLEANING);
-          cacheService.setCleaning(INITIAL_CLEANING);
-          onUpdate(INITIAL_CLEANING);
+          cacheService.setCleaning([]);
+          onUpdate([]);
         } else {
           const list: CleaningSchedule[] = [];
           snapshot.forEach((doc) => {
@@ -207,12 +202,12 @@ export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) 
         }
       },
       () => {
-        const fallback = cacheService.getCleaning<CleaningSchedule>() || INITIAL_CLEANING;
+        const fallback = cacheService.getCleaning<CleaningSchedule>() || [];
         onUpdate(fallback);
       }
     );
   } catch {
-    const fallback = cacheService.getCleaning<CleaningSchedule>() || INITIAL_CLEANING;
+    const fallback = cacheService.getCleaning<CleaningSchedule>() || [];
     onUpdate(fallback);
     return () => {};
   }
@@ -221,10 +216,10 @@ export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) 
 // Subscribe to Public Witnessing
 export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[]) => void) {
   const cached = cacheService.getWitnessing<PublicWitnessingSchedule>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     onUpdate(cached);
   } else {
-    onUpdate(INITIAL_WITNESSING);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -235,9 +230,8 @@ export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[])
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          seedCollection(WITNESSING_COL, INITIAL_WITNESSING);
-          cacheService.setWitnessing(INITIAL_WITNESSING);
-          onUpdate(INITIAL_WITNESSING);
+          cacheService.setWitnessing([]);
+          onUpdate([]);
         } else {
           const list: PublicWitnessingSchedule[] = [];
           snapshot.forEach((doc) => {
@@ -248,12 +242,12 @@ export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[])
         }
       },
       () => {
-        const fallback = cacheService.getWitnessing<PublicWitnessingSchedule>() || INITIAL_WITNESSING;
+        const fallback = cacheService.getWitnessing<PublicWitnessingSchedule>() || [];
         onUpdate(fallback);
       }
     );
   } catch {
-    const fallback = cacheService.getWitnessing<PublicWitnessingSchedule>() || INITIAL_WITNESSING;
+    const fallback = cacheService.getWitnessing<PublicWitnessingSchedule>() || [];
     onUpdate(fallback);
     return () => {};
   }
@@ -262,10 +256,10 @@ export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[])
 // Subscribe to Groups
 export function subscribeGroups(onUpdate: (data: CongregationGroup[]) => void) {
   const cached = cacheService.getGroups<CongregationGroup>();
-  if (cached && cached.length > 0) {
+  if (cached && Array.isArray(cached)) {
     onUpdate(cached);
   } else {
-    onUpdate(INITIAL_GROUPS);
+    onUpdate([]);
   }
 
   if (!db) return () => {};
@@ -276,9 +270,8 @@ export function subscribeGroups(onUpdate: (data: CongregationGroup[]) => void) {
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          seedCollection(GROUPS_COL, INITIAL_GROUPS);
-          cacheService.setGroups(INITIAL_GROUPS);
-          onUpdate(INITIAL_GROUPS);
+          cacheService.setGroups([]);
+          onUpdate([]);
         } else {
           const list: CongregationGroup[] = [];
           snapshot.forEach((doc) => {
@@ -290,12 +283,12 @@ export function subscribeGroups(onUpdate: (data: CongregationGroup[]) => void) {
         }
       },
       () => {
-        const fallback = cacheService.getGroups<CongregationGroup>() || INITIAL_GROUPS;
+        const fallback = cacheService.getGroups<CongregationGroup>() || [];
         onUpdate(fallback);
       }
     );
   } catch {
-    const fallback = cacheService.getGroups<CongregationGroup>() || INITIAL_GROUPS;
+    const fallback = cacheService.getGroups<CongregationGroup>() || [];
     onUpdate(fallback);
     return () => {};
   }

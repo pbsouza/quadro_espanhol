@@ -43,8 +43,21 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {groupsList.map((group) => (
+      {groupsList.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 border border-stone-200 shadow-xs text-center my-8">
+          <Users className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-stone-800 mb-1">
+            {language === 'pt' ? 'Nenhum dado disponível' : 'No hay datos disponibles'}
+          </h3>
+          <p className="text-stone-500 text-sm">
+            {language === 'pt'
+              ? 'Não há nenhum grupo de campo cadastrado no momento.'
+              : 'No hay ningún grupo de campo registrado en este momento.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {groupsList.map((group) => (
           <div
             key={group.id}
             className="bg-white rounded-2xl border border-stone-200 p-4 shadow-xs"
@@ -111,6 +124,7 @@ export const GroupsPage: React.FC<GroupsPageProps> = ({
           </div>
         ))}
       </div>
+      )}
 
       <TextScaleBar textScale={textScale} setTextScale={setTextScale} language={language} />
     </div>
