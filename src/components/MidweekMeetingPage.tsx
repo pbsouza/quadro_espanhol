@@ -4,6 +4,7 @@ import { Menu, BookOpen, User, Music, Gem, Wheat, AlertTriangle, ArrowLeft, Refr
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
 import { findCurrentWeekIndex } from '../utils/weekUtils';
+import { cleanPartTitle } from '../utils/fileImportParser';
 
 interface MidweekMeetingPageProps {
   meeting: MidweekMeeting | undefined;
@@ -297,7 +298,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
               return (
                 <div key={part.id || idx} className={idx > 0 ? 'pt-3' : ''}>
                   <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
-                    {itemNum}. {part.title}
+                    {itemNum}. {cleanPartTitle(part.title)}
                   </p>
 
                   <div className={`grid grid-cols-1 ${hasSalaB ? 'sm:grid-cols-2' : ''} gap-2 mt-2`}>
@@ -382,7 +383,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
             return (
               <div key={part.id || idx} className="pt-3">
                 <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
-                  {itemNum}. {part.title}
+                  {itemNum}. {cleanPartTitle(part.title)}
                 </p>
                 <div className="mt-1 pl-4 space-y-0.5">
                   <p className="text-sm text-stone-800">

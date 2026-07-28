@@ -1,5 +1,18 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
+/**
+ * Strips leading numbers, dots, spaces, dashes, or colons from part titles.
+ * Examples:
+ * - "4. 4. Empiece conversaciones" -> "Empiece conversaciones"
+ * - "7. Seamos adaptables" -> "Seamos adaptables"
+ * - "04. Empiece" -> "Empiece"
+ * - "7 - Seamos" -> "Seamos"
+ */
+export function cleanPartTitle(title: string): string {
+  if (!title) return '';
+  return title.replace(/^(\d+[\s\.\-\)\:]*)+/, '').trim();
+}
+
 // Set PDF.js worker
 try {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -313,7 +326,7 @@ export function parseMeetingText(text: string): ParsedMeetingData {
           if (partTitle.length > 2 && result.facaSeuMelhor) {
             result.facaSeuMelhor.push({
               id: `imported_m_${Date.now()}_${i}`,
-              title: partTitle,
+              title: cleanPartTitle(partTitle),
               durationMin: 4,
               assignedMain,
               assignedAssistant,
@@ -349,7 +362,7 @@ export function parseMeetingText(text: string): ParsedMeetingData {
           if (title.length > 2 && result.nossaVidaCrista) {
             result.nossaVidaCrista.push({
               id: `imported_v_${Date.now()}_${i}`,
-              title,
+              title: cleanPartTitle(title),
               durationMin: isBibleStudy ? 30 : 15,
               speaker,
               reader,

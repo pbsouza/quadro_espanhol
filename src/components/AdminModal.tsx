@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { MidweekMeeting, MinisterioPart, VidaCristaPart, Announcement, AppLanguage } from '../types';
 import { saveMidweekMeeting, saveAnnouncement, clearAllDatabaseData } from '../services/firestoreService';
 import { X, Plus, Trash2, Save, RefreshCw, CheckCircle } from 'lucide-react';
+import { useModalBackHandler } from '../hooks/useModalBackHandler';
+import { cleanPartTitle } from '../utils/fileImportParser';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -16,6 +18,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   midweekMeeting,
   language,
 }) => {
+  // Intercept mobile back button to close modal
+  useModalBackHandler(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const isPt = language === 'pt';
@@ -137,9 +142,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               type: 'reading',
             },
           ],
-          facaSeuMelhor,
+          facaSeuMelhor: facaSeuMelhor.map(p => ({ ...p, title: cleanPartTitle(p.title) })),
           middleSong,
-          nossaVidaCrista,
+          nossaVidaCrista: nossaVidaCrista.map(p => ({ ...p, title: cleanPartTitle(p.title) })),
           finalSong,
           finalPrayer,
         };

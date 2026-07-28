@@ -104,7 +104,8 @@ Regras:
 2. Identifique nomes de irmãos, títulos e minutos com clareza.
 3. Não invente nomes se não puder ler. Deixe em branco ou null.
 4. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
-5. Retorne APENAS o JSON puro.`;
+5. IMPORTANTE: Nos títulos das partes das seções "facaSeuMelhor" e "nossaVidaCrista", REMOVA QUALQUER NUMERAÇÃO no início do título (exemplo: extraia "Empiece conversaciones" em vez de "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
+6. Retorne APENAS o JSON puro.`;
 
       const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.5-pro"];
       let responseText = "{}";
@@ -241,7 +242,8 @@ Regras:
 1. Se houver MAIS DE UMA SEMANA no documento, SEPARE CADA SEMANA EM UM ELEMENTO NO ARRAY "weeks"!
 2. Extraia nomes de irmãos, oradores, ajudantes, leitores, presidentes e cânticos para cada semana.
 3. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
-4. Retorne APENAS o JSON puro.`;
+4. IMPORTANTE: Nos títulos das partes das seções "facaSeuMelhor" e "nossaVidaCrista", REMOVA QUALQUER NUMERAÇÃO no início do título (exemplo: extraia "Empiece conversaciones" em vez de "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
+5. Retorne APENAS o JSON puro.`;
 
       const contentsParts: any[] = [];
 
