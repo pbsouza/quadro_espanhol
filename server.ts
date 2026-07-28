@@ -102,25 +102,41 @@ Regras:
 4. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
 5. Retorne APENAS o JSON puro.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: cleanBase64,
-                mimeType: cleanMimeType,
-              },
-            },
-            { text: prompt },
-          ],
-        },
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
+      const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"];
+      let responseText = "{}";
+      let lastErr: any = null;
 
-      const responseText = response.text || "{}";
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    data: cleanBase64,
+                    mimeType: cleanMimeType,
+                  },
+                },
+                { text: prompt },
+              ],
+            },
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          responseText = response.text || "{}";
+          lastErr = null;
+          break;
+        } catch (mErr) {
+          console.warn(`Server model ${modelName} failed, trying next...`, mErr);
+          lastErr = mErr;
+        }
+      }
+
+      if (lastErr && responseText === "{}") {
+        throw lastErr;
+      }
       const parsedJSON = JSON.parse(responseText);
       const weeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
         ? parsedJSON.weeks
@@ -241,17 +257,33 @@ Regras:
 
       contentsParts.push({ text: prompt });
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: {
-          parts: contentsParts,
-        },
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
+      const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"];
+      let responseText = "{}";
+      let lastErr: any = null;
 
-      const responseText = response.text || "{}";
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+              parts: contentsParts,
+            },
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          responseText = response.text || "{}";
+          lastErr = null;
+          break;
+        } catch (mErr) {
+          console.warn(`Server model ${modelName} failed, trying next...`, mErr);
+          lastErr = mErr;
+        }
+      }
+
+      if (lastErr && responseText === "{}") {
+        throw lastErr;
+      }
       const parsedJSON = JSON.parse(responseText);
       const weeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
         ? parsedJSON.weeks

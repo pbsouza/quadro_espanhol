@@ -87,30 +87,42 @@ export async function parseImageWithClientGemini(
   const ai = new GoogleGenAI({ apiKey });
   const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: cleanBase64,
-            mimeType: mimeType || 'image/jpeg',
-          },
-        },
-        { text: SCHEDULE_PROMPT },
-      ],
-    },
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
+  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+  let lastError: any = null;
 
-  const responseText = response.text || '{}';
-  const parsedJSON = JSON.parse(responseText);
-  if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
-    return parsedJSON.weeks;
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                data: cleanBase64,
+                mimeType: mimeType || 'image/jpeg',
+              },
+            },
+            { text: SCHEDULE_PROMPT },
+          ],
+        },
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const responseText = response.text || '{}';
+      const parsedJSON = JSON.parse(responseText);
+      if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
+        return parsedJSON.weeks;
+      }
+      return [parsedJSON];
+    } catch (err) {
+      console.warn(`Model ${modelName} failed, trying next...`, err);
+      lastError = err;
+    }
   }
-  return [parsedJSON];
+
+  throw lastError || new Error('Não foi possível analisar a imagem com os modelos do Gemini.');
 }
 
 export async function parseDocWithClientGemini(
@@ -138,18 +150,30 @@ export async function parseDocWithClientGemini(
 
   parts.push({ text: SCHEDULE_PROMPT });
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: { parts },
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
+  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+  let lastError: any = null;
 
-  const responseText = response.text || '{}';
-  const parsedJSON = JSON.parse(responseText);
-  if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
-    return parsedJSON.weeks;
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: { parts },
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const responseText = response.text || '{}';
+      const parsedJSON = JSON.parse(responseText);
+      if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
+        return parsedJSON.weeks;
+      }
+      return [parsedJSON];
+    } catch (err) {
+      console.warn(`Model ${modelName} failed, trying next...`, err);
+      lastError = err;
+    }
   }
-  return [parsedJSON];
+
+  throw lastError || new Error('Não foi possível analisar o documento com os modelos do Gemini.');
 }
