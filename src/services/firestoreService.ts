@@ -315,20 +315,26 @@ async function seedCollection<T extends { id: string }>(collectionName: string, 
 
 // Save or Update Midweek Meeting
 export async function saveMidweekMeeting(meeting: MidweekMeeting): Promise<void> {
+  const cleanMeeting: MidweekMeeting = JSON.parse(JSON.stringify(meeting));
   const cached = cacheService.getMidweek<MidweekMeeting>() || [];
-  const idx = cached.findIndex((m) => m.id === meeting.id);
+  const idx = cached.findIndex((m) => m.id === cleanMeeting.id);
   let updated = [...cached];
   if (idx >= 0) {
-    updated[idx] = meeting;
+    updated[idx] = cleanMeeting;
   } else {
-    updated.push(meeting);
+    updated.push(cleanMeeting);
   }
   updated = sortMeetingsChronologically(filterMeetingsBy21Weeks(updated));
   cacheService.setMidweek(updated);
 
   if (db) {
-    const docRef = doc(db, MIDWEEK_COL, meeting.id);
-    await setDoc(docRef, meeting, { merge: true });
+    try {
+      const docRef = doc(db, MIDWEEK_COL, cleanMeeting.id);
+      await setDoc(docRef, cleanMeeting, { merge: true });
+    } catch (err) {
+      console.error(`Error saving midweek meeting ${cleanMeeting.id} to Firestore:`, err);
+      throw err;
+    }
   }
 }
 
@@ -345,20 +351,26 @@ export async function deleteMidweekMeeting(id: string): Promise<void> {
 
 // Save or Update Weekend Meeting
 export async function saveWeekendMeeting(meeting: WeekendMeeting): Promise<void> {
+  const cleanMeeting: WeekendMeeting = JSON.parse(JSON.stringify(meeting));
   const cached = cacheService.getWeekend<WeekendMeeting>() || [];
-  const idx = cached.findIndex((m) => m.id === meeting.id);
+  const idx = cached.findIndex((m) => m.id === cleanMeeting.id);
   let updated = [...cached];
   if (idx >= 0) {
-    updated[idx] = meeting;
+    updated[idx] = cleanMeeting;
   } else {
-    updated.push(meeting);
+    updated.push(cleanMeeting);
   }
   updated = sortMeetingsChronologically(filterMeetingsBy21Weeks(updated));
   cacheService.setWeekend(updated);
 
   if (db) {
-    const docRef = doc(db, WEEKEND_COL, meeting.id);
-    await setDoc(docRef, meeting, { merge: true });
+    try {
+      const docRef = doc(db, WEEKEND_COL, cleanMeeting.id);
+      await setDoc(docRef, cleanMeeting, { merge: true });
+    } catch (err) {
+      console.error(`Error saving weekend meeting ${cleanMeeting.id} to Firestore:`, err);
+      throw err;
+    }
   }
 }
 

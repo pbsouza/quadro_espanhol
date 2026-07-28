@@ -420,23 +420,40 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           id: midweekId,
           weekId,
           weekLabel,
-          weekLabelEs: existingMidweek?.weekLabelEs,
+          weekLabelEs: existingMidweek?.weekLabelEs || '',
           president: data.president || existingMidweek?.president || '',
           initialSong: data.initialSong || existingMidweek?.initialSong || '1',
           initialPrayer: data.initialPrayer || existingMidweek?.initialPrayer || '',
           counselorSalaB: data.counselorSalaB || existingMidweek?.counselorSalaB || '',
           tesouros: [
-            { id: 't1', title: isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)', durationMin: 10, speaker: data.talkSpeaker || existingMidweek?.tesouros?.[0]?.speaker || '', type: 'talk' },
+            { id: 't1', title: data.talkTitle || existingMidweek?.tesouros?.[0]?.title || (isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)'), durationMin: 10, speaker: data.talkSpeaker || existingMidweek?.tesouros?.[0]?.speaker || '', type: 'talk' },
             { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: data.gemsSpeaker || existingMidweek?.tesouros?.[1]?.speaker || '', type: 'gems' },
             { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: data.readingMain || existingMidweek?.tesouros?.[2]?.speaker || '', speakerSalaB: data.readingSalaB || existingMidweek?.tesouros?.[2]?.speakerSalaB || '', type: 'reading' },
           ],
-          facaSeuMelhor: (data.facaSeuMelhor && data.facaSeuMelhor.length > 0)
+          facaSeuMelhor: ((data.facaSeuMelhor && data.facaSeuMelhor.length > 0)
             ? (data.facaSeuMelhor as MinisterioPart[])
-            : (existingMidweek?.facaSeuMelhor || []),
+            : (existingMidweek?.facaSeuMelhor || [])).map((part, pIdx) => ({
+              id: part.id || `f_${pIdx + 1}`,
+              title: part.title || '',
+              durationMin: Number(part.durationMin) || 3,
+              assignedMain: part.assignedMain || '',
+              assignedAssistant: part.assignedAssistant || '',
+              assignedSalaB: part.assignedSalaB || '',
+              assignedSalaBAssistant: part.assignedSalaBAssistant || '',
+              description: part.description || '',
+            })),
           middleSong: data.middleSong || existingMidweek?.middleSong || '',
-          nossaVidaCrista: (data.nossaVidaCrista && data.nossaVidaCrista.length > 0)
+          nossaVidaCrista: ((data.nossaVidaCrista && data.nossaVidaCrista.length > 0)
             ? (data.nossaVidaCrista as VidaCristaPart[])
-            : (existingMidweek?.nossaVidaCrista || []),
+            : (existingMidweek?.nossaVidaCrista || [])).map((part, pIdx) => ({
+              id: part.id || `v_${pIdx + 1}`,
+              title: part.title || '',
+              durationMin: Number(part.durationMin) || 15,
+              speaker: part.speaker || '',
+              reader: part.reader || '',
+              description: part.description || '',
+              isBibleStudy: Boolean(part.isBibleStudy),
+            })),
           finalSong: data.finalSong || existingMidweek?.finalSong || '',
           finalPrayer: data.finalPrayer || existingMidweek?.finalPrayer || '',
         };
@@ -564,7 +581,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         initialPrayer,
         counselorSalaB,
         tesouros: [
-          { id: 't1', title: isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)', durationMin: 10, speaker: talkSpeaker, type: 'talk' },
+          { id: 't1', title: talkTitle.trim() || (isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)'), durationMin: 10, speaker: talkSpeaker, type: 'talk' },
           { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: gemsSpeaker, type: 'gems' },
           { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: readingMain, speakerSalaB: readingSalaB, type: 'reading' },
         ],
@@ -1449,6 +1466,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 : 'Partes fijas del programa. Indique solo el nombre de los hermanos asignados.'}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="sm:col-span-2">
+                <label className="font-semibold block mb-1">
+                  {isPt ? '1. Tema do Discurso (10 min):' : '1. Tema del Discurso (10 min):'}
+                </label>
+                <input
+                  type="text"
+                  value={talkTitle}
+                  onChange={(e) => setTalkTitle(e.target.value)}
+                  placeholder={isPt ? 'Ex: JEREMIAS 13-15 ou Tema do Discurso' : 'Ej: JEREMÍAS 13-15'}
+                  className="w-full border rounded-xl p-2.5 bg-white font-medium"
+                />
+              </div>
               <div>
                 <label className="font-semibold block mb-1">
                   {isPt ? '1. Discurso (10 min) — Orador:' : '1. Discurso (10 min) — Orador:'}

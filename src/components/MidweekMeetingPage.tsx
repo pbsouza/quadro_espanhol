@@ -174,7 +174,19 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
           {/* Part 1: Talk */}
           <div className="pt-1">
             <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
-              1. {t.talkPartTitle}
+              {(() => {
+                const title = tesourosList[0]?.title?.trim();
+                if (!title || title === 'Discurso (10 min.)' || title === 'Tesouros da Palavra de Deus (10 min)') {
+                  return `1. ${t.talkPartTitle}`;
+                }
+                if (title.startsWith('1.')) {
+                  return title;
+                }
+                if (title.toLowerCase().includes('discurso')) {
+                  return `1. ${title}`;
+                }
+                return `1. Discurso (10 min.): ${title}`;
+              })()}
             </p>
             <p className="text-sm text-stone-600 mt-0.5 pl-4">
               <span className="font-medium text-stone-800">{tesourosList[0]?.speaker || '---'}</span>
