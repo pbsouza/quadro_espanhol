@@ -365,180 +365,205 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   }, [selectedWeekendIndex, weekendMeetings, activeWeekend]);
 
   const handleApplyParsedData = (data: ParsedMeetingData) => {
-    if (data.president) setPresident(data.president);
-    if (data.initialSong) setInitialSong(data.initialSong);
-    if (data.initialPrayer) setInitialPrayer(data.initialPrayer);
-    if (data.counselorSalaB) setCounselorSalaB(data.counselorSalaB);
-    if (data.talkTitle) setTalkTitle(data.talkTitle);
-    if (data.talkSpeaker) setTalkSpeaker(data.talkSpeaker);
-    if (data.gemsSpeaker) setGemsSpeaker(data.gemsSpeaker);
-    if (data.readingMain) setReadingMain(data.readingMain);
-    if (data.readingSalaB) setReadingSalaB(data.readingSalaB);
-    if (data.facaSeuMelhor && data.facaSeuMelhor.length > 0) {
-      setFacaSeuMelhor(data.facaSeuMelhor as MinisterioPart[]);
-    }
-    if (data.middleSong) setMiddleSong(data.middleSong);
-    if (data.nossaVidaCrista && data.nossaVidaCrista.length > 0) {
-      setNossaVidaCrista(data.nossaVidaCrista as VidaCristaPart[]);
-    }
-    if (data.finalSong) setFinalSong(data.finalSong);
-    if (data.finalPrayer) setFinalPrayer(data.finalPrayer);
+    const isMidweek = data.meetingType === 'midweek' || data.meetingType === 'both' || activeTab === 'midweek';
+    const isWeekend = data.meetingType === 'weekend' || data.meetingType === 'both' || activeTab === 'weekend';
 
-    if (data.publicTalkTitle) setWeekendTalkTitle(data.publicTalkTitle);
-    if (data.speakerName) setWeekendSpeaker(data.speakerName);
-    if (data.speakerCongregation) setWeekendCongregation(data.speakerCongregation);
-    if (data.weekendPresident) setWeekendPresident(data.weekendPresident);
-    if (data.watchtowerTitle) setWtTitle(data.watchtowerTitle);
-    if (data.watchtowerConductor) setWtConductor(data.watchtowerConductor);
-    if (data.watchtowerReader) setWtReader(data.watchtowerReader);
-    if (data.weekendFinalSong) setWeekendFinalSong(data.weekendFinalSong);
-    if (data.weekendFinalPrayer) setWeekendFinalPrayer(data.weekendFinalPrayer);
+    if (isMidweek) {
+      if (data.president) setPresident(data.president);
+      if (data.initialSong) setInitialSong(data.initialSong);
+      if (data.initialPrayer) setInitialPrayer(data.initialPrayer);
+      if (data.counselorSalaB) setCounselorSalaB(data.counselorSalaB);
+      if (data.talkTitle) setTalkTitle(data.talkTitle);
+      if (data.talkSpeaker) setTalkSpeaker(data.talkSpeaker);
+      if (data.gemsSpeaker) setGemsSpeaker(data.gemsSpeaker);
+      if (data.readingMain) setReadingMain(data.readingMain);
+      if (data.readingSalaB) setReadingSalaB(data.readingSalaB);
+      if (data.facaSeuMelhor && data.facaSeuMelhor.length > 0) {
+        setFacaSeuMelhor(data.facaSeuMelhor as MinisterioPart[]);
+      }
+      if (data.middleSong) setMiddleSong(data.middleSong);
+      if (data.nossaVidaCrista && data.nossaVidaCrista.length > 0) {
+        setNossaVidaCrista(data.nossaVidaCrista as VidaCristaPart[]);
+      }
+      if (data.finalSong) setFinalSong(data.finalSong);
+      if (data.finalPrayer) setFinalPrayer(data.finalPrayer);
+    }
+
+    if (isWeekend) {
+      if (data.publicTalkTitle) setWeekendTalkTitle(data.publicTalkTitle);
+      if (data.speakerName) setWeekendSpeaker(data.speakerName);
+      if (data.speakerCongregation) setWeekendCongregation(data.speakerCongregation);
+      if (data.weekendPresident) setWeekendPresident(data.weekendPresident);
+      if (data.watchtowerTitle) setWtTitle(data.watchtowerTitle);
+      if (data.watchtowerConductor) setWtConductor(data.watchtowerConductor);
+      if (data.watchtowerReader) setWtReader(data.watchtowerReader);
+      if (data.weekendFinalSong) setWeekendFinalSong(data.weekendFinalSong);
+      if (data.weekendFinalPrayer) setWeekendFinalPrayer(data.weekendFinalPrayer);
+    }
 
     setSuccessMsg(isPt ? 'Partes importadas e preenchidas com sucesso no formulário!' : '¡Partes importadas y llenadas con éxito!');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  const handleApplyAllParsedWeeks = async (weeks: ParsedMeetingData[]) => {
+  const handleApplyAllParsedWeeks = async (weeks: ParsedMeetingData[], targetType?: 'midweek' | 'weekend' | 'both') => {
     setSaving(true);
     try {
       const usedMidweekIds = new Set<string>();
       const usedWeekendIds = new Set<string>();
       const savedWeekNames: string[] = [];
 
+      const effectiveTargetType = targetType || (activeTab === 'weekend' ? 'weekend' : activeTab === 'midweek' ? 'midweek' : 'both');
+
       for (let i = 0; i < weeks.length; i++) {
         const data = weeks[i];
+        const weekType = (data.meetingType && data.meetingType !== 'both')
+          ? data.meetingType
+          : effectiveTargetType;
+
+        const isMidweekTarget = weekType === 'midweek' || weekType === 'both';
+        const isWeekendTarget = weekType === 'weekend' || weekType === 'both';
 
         // Extract numbers from label to safely compare start/end days
         const extractNums = (str?: string) => (str ? (str.match(/\d+/g) || []).map(Number) : []);
         const dataNums = extractNums(data.weekLabel);
 
-        // 1. Find or match Midweek Meeting without reusing IDs
-        let existingMidweek = allMidweekList.find(m => {
-          if (usedMidweekIds.has(m.id)) return false;
-          if (data.weekDate && m.weekId === data.weekDate) return true;
-          const mNums = extractNums(m.weekLabel);
-          if (dataNums.length >= 2 && mNums.length >= 2) {
-            return dataNums[0] === mNums[0] && dataNums[1] === mNums[1];
-          }
-          return false;
-        });
-
-        // Fallback: match by index if not yet claimed
-        if (!existingMidweek && allMidweekList[i] && !usedMidweekIds.has(allMidweekList[i].id)) {
-          existingMidweek = allMidweekList[i];
-        }
-
         const baseMonday = getMondayOf(new Date());
         baseMonday.setDate(baseMonday.getDate() + (i * 7));
         const calculatedWeekDate = formatYYYYMMDD(baseMonday);
 
-        const weekId = existingMidweek?.weekId || data.weekDate || calculatedWeekDate;
-        const midweekId = existingMidweek?.id || `midweek_${weekId}`;
-        const weekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
+        // 1. Process Midweek ONLY if targeted
+        if (isMidweekTarget) {
+          let existingMidweek = allMidweekList.find(m => {
+            if (usedMidweekIds.has(m.id)) return false;
+            if (data.weekDate && m.weekId === data.weekDate) return true;
+            const mNums = extractNums(m.weekLabel);
+            if (dataNums.length >= 2 && mNums.length >= 2) {
+              return dataNums[0] === mNums[0] && dataNums[1] === mNums[1];
+            }
+            return false;
+          });
 
-        if (existingMidweek) {
-          usedMidweekIds.add(existingMidweek.id);
-        } else {
-          usedMidweekIds.add(midweekId);
-        }
-
-        const updatedMidweek: MidweekMeeting = {
-          id: midweekId,
-          weekId,
-          weekLabel,
-          weekLabelEs: existingMidweek?.weekLabelEs || '',
-          president: data.president || existingMidweek?.president || '',
-          initialSong: data.initialSong || existingMidweek?.initialSong || '1',
-          initialPrayer: data.initialPrayer || existingMidweek?.initialPrayer || '',
-          counselorSalaB: data.counselorSalaB || existingMidweek?.counselorSalaB || '',
-          tesouros: [
-            { id: 't1', title: data.talkTitle || existingMidweek?.tesouros?.[0]?.title || (isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)'), durationMin: 10, speaker: data.talkSpeaker || existingMidweek?.tesouros?.[0]?.speaker || '', type: 'talk' },
-            { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: data.gemsSpeaker || existingMidweek?.tesouros?.[1]?.speaker || '', type: 'gems' },
-            { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: data.readingMain || existingMidweek?.tesouros?.[2]?.speaker || '', speakerSalaB: data.readingSalaB || existingMidweek?.tesouros?.[2]?.speakerSalaB || '', type: 'reading' },
-          ],
-          facaSeuMelhor: ((data.facaSeuMelhor && data.facaSeuMelhor.length > 0)
-            ? (data.facaSeuMelhor as MinisterioPart[])
-            : (existingMidweek?.facaSeuMelhor || [])).map((part, pIdx) => ({
-              id: part.id || `f_${pIdx + 1}`,
-              title: part.title || '',
-              durationMin: Number(part.durationMin) || 3,
-              assignedMain: part.assignedMain || '',
-              assignedAssistant: part.assignedAssistant || '',
-              assignedSalaB: part.assignedSalaB || '',
-              assignedSalaBAssistant: part.assignedSalaBAssistant || '',
-              description: part.description || '',
-            })),
-          middleSong: data.middleSong || existingMidweek?.middleSong || '',
-          nossaVidaCrista: ((data.nossaVidaCrista && data.nossaVidaCrista.length > 0)
-            ? (data.nossaVidaCrista as VidaCristaPart[])
-            : (existingMidweek?.nossaVidaCrista || [])).map((part, pIdx) => ({
-              id: part.id || `v_${pIdx + 1}`,
-              title: part.title || '',
-              durationMin: Number(part.durationMin) || 15,
-              speaker: part.speaker || '',
-              reader: part.reader || '',
-              description: part.description || '',
-              isBibleStudy: Boolean(part.isBibleStudy),
-            })),
-          finalSong: data.finalSong || existingMidweek?.finalSong || '',
-          finalPrayer: data.finalPrayer || existingMidweek?.finalPrayer || '',
-        };
-
-        await saveMidweekMeeting(updatedMidweek);
-
-        // 2. Find or match Weekend Meeting without reusing IDs
-        let existingWeekend = allWeekendList.find(w => {
-          if (usedWeekendIds.has(w.id)) return false;
-          if (data.weekDate && w.weekId === data.weekDate) return true;
-          const wNums = extractNums(w.weekLabel);
-          if (dataNums.length >= 2 && wNums.length >= 2) {
-            return dataNums[0] === wNums[0] && dataNums[1] === wNums[1];
+          if (!existingMidweek && allMidweekList[i] && !usedMidweekIds.has(allMidweekList[i].id)) {
+            existingMidweek = allMidweekList[i];
           }
-          return false;
-        });
 
-        if (!existingWeekend && allWeekendList[i] && !usedWeekendIds.has(allWeekendList[i].id)) {
-          existingWeekend = allWeekendList[i];
+          const weekId = existingMidweek?.weekId || data.weekDate || calculatedWeekDate;
+          const midweekId = existingMidweek?.id || `midweek_${weekId}`;
+          const weekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
+
+          if (existingMidweek) {
+            usedMidweekIds.add(existingMidweek.id);
+          } else {
+            usedMidweekIds.add(midweekId);
+          }
+
+          const updatedMidweek: MidweekMeeting = {
+            id: midweekId,
+            weekId,
+            weekLabel,
+            weekLabelEs: existingMidweek?.weekLabelEs || '',
+            president: data.president || existingMidweek?.president || '',
+            initialSong: data.initialSong || existingMidweek?.initialSong || '1',
+            initialPrayer: data.initialPrayer || existingMidweek?.initialPrayer || '',
+            counselorSalaB: data.counselorSalaB || existingMidweek?.counselorSalaB || '',
+            tesouros: [
+              { id: 't1', title: data.talkTitle || existingMidweek?.tesouros?.[0]?.title || (isPt ? 'Discurso (10 min.)' : 'Discurso (10 min.)'), durationMin: 10, speaker: data.talkSpeaker || existingMidweek?.tesouros?.[0]?.speaker || '', type: 'talk' },
+              { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: data.gemsSpeaker || existingMidweek?.tesouros?.[1]?.speaker || '', type: 'gems' },
+              { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: data.readingMain || existingMidweek?.tesouros?.[2]?.speaker || '', speakerSalaB: data.readingSalaB || existingMidweek?.tesouros?.[2]?.speakerSalaB || '', type: 'reading' },
+            ],
+            facaSeuMelhor: ((data.facaSeuMelhor && data.facaSeuMelhor.length > 0)
+              ? (data.facaSeuMelhor as MinisterioPart[])
+              : (existingMidweek?.facaSeuMelhor || [])).map((part, pIdx) => ({
+                id: part.id || `f_${pIdx + 1}`,
+                title: part.title || '',
+                durationMin: Number(part.durationMin) || 3,
+                assignedMain: part.assignedMain || '',
+                assignedAssistant: part.assignedAssistant || '',
+                assignedSalaB: part.assignedSalaB || '',
+                assignedSalaBAssistant: part.assignedSalaBAssistant || '',
+                description: part.description || '',
+              })),
+            middleSong: data.middleSong || existingMidweek?.middleSong || '',
+            nossaVidaCrista: ((data.nossaVidaCrista && data.nossaVidaCrista.length > 0)
+              ? (data.nossaVidaCrista as VidaCristaPart[])
+              : (existingMidweek?.nossaVidaCrista || [])).map((part, pIdx) => ({
+                id: part.id || `v_${pIdx + 1}`,
+                title: part.title || '',
+                durationMin: Number(part.durationMin) || 15,
+                speaker: part.speaker || '',
+                reader: part.reader || '',
+                description: part.description || '',
+                isBibleStudy: Boolean(part.isBibleStudy),
+              })),
+            finalSong: data.finalSong || existingMidweek?.finalSong || '',
+            finalPrayer: data.finalPrayer || existingMidweek?.finalPrayer || '',
+          };
+
+          await saveMidweekMeeting(updatedMidweek);
+          if (!savedWeekNames.includes(weekLabel)) savedWeekNames.push(weekLabel);
         }
 
-        const weekendId = existingWeekend?.id || `weekend_${weekId}`;
+        // 2. Process Weekend ONLY if targeted
+        if (isWeekendTarget) {
+          let existingWeekend = allWeekendList.find(w => {
+            if (usedWeekendIds.has(w.id)) return false;
+            if (data.weekDate && w.weekId === data.weekDate) return true;
+            const wNums = extractNums(w.weekLabel);
+            if (dataNums.length >= 2 && wNums.length >= 2) {
+              return dataNums[0] === wNums[0] && dataNums[1] === wNums[1];
+            }
+            return false;
+          });
 
-        if (existingWeekend) {
-          usedWeekendIds.add(existingWeekend.id);
-        } else {
-          usedWeekendIds.add(weekendId);
+          if (!existingWeekend && allWeekendList[i] && !usedWeekendIds.has(allWeekendList[i].id)) {
+            existingWeekend = allWeekendList[i];
+          }
+
+          const weekId = existingWeekend?.weekId || data.weekDate || calculatedWeekDate;
+          const weekendId = existingWeekend?.id || `weekend_${weekId}`;
+          const weekLabel = data.weekLabel || existingWeekend?.weekLabel || `Semana ${i + 1}`;
+
+          if (existingWeekend) {
+            usedWeekendIds.add(existingWeekend.id);
+          } else {
+            usedWeekendIds.add(weekendId);
+          }
+
+          const updatedWeekend: WeekendMeeting = {
+            id: weekendId,
+            weekId,
+            weekLabel,
+            publicTalkTitle: data.publicTalkTitle || existingWeekend?.publicTalkTitle || '',
+            speakerName: data.speakerName || existingWeekend?.speakerName || '',
+            speakerCongregation: data.speakerCongregation || existingWeekend?.speakerCongregation || '',
+            president: data.weekendPresident || existingWeekend?.president || '',
+            initialSong: data.weekendInitialSong || existingWeekend?.initialSong || '1',
+            watchtowerTitle: data.watchtowerTitle || existingWeekend?.watchtowerTitle || 'Estudo de A Sentinela',
+            watchtowerConductor: data.watchtowerConductor || existingWeekend?.watchtowerConductor || '',
+            watchtowerReader: data.watchtowerReader || existingWeekend?.watchtowerReader || '',
+            finalSong: data.weekendFinalSong || existingWeekend?.finalSong || '2',
+            finalPrayer: data.weekendFinalPrayer || existingWeekend?.finalPrayer || '',
+          };
+
+          await saveWeekendMeeting(updatedWeekend);
+          if (!savedWeekNames.includes(weekLabel)) savedWeekNames.push(weekLabel);
         }
 
-        const updatedWeekend: WeekendMeeting = {
-          id: weekendId,
-          weekId,
-          weekLabel,
-          publicTalkTitle: data.publicTalkTitle || existingWeekend?.publicTalkTitle || '',
-          speakerName: data.speakerName || existingWeekend?.speakerName || '',
-          speakerCongregation: data.speakerCongregation || existingWeekend?.speakerCongregation || '',
-          president: data.weekendPresident || existingWeekend?.president || '',
-          initialSong: data.weekendInitialSong || existingWeekend?.initialSong || '1',
-          watchtowerTitle: data.watchtowerTitle || existingWeekend?.watchtowerTitle || 'Estudo de A Sentinela',
-          watchtowerConductor: data.watchtowerConductor || existingWeekend?.watchtowerConductor || '',
-          watchtowerReader: data.watchtowerReader || existingWeekend?.watchtowerReader || '',
-          finalSong: data.weekendFinalSong || existingWeekend?.finalSong || '2',
-          finalPrayer: data.weekendFinalPrayer || existingWeekend?.finalPrayer || '',
-        };
-
-        await saveWeekendMeeting(updatedWeekend);
-
-        savedWeekNames.push(weekLabel);
-
-        // 3. Update form fields for first week
         if (i === 0) {
-          handleApplyParsedData(data);
+          handleApplyParsedData({ ...data, meetingType: weekType });
         }
       }
 
+      const typeLabel = effectiveTargetType === 'midweek' 
+        ? (isPt ? 'Meio de Semana' : 'Entre Semana')
+        : effectiveTargetType === 'weekend'
+        ? (isPt ? 'Fim de Semana' : 'Fin de Semana')
+        : (isPt ? 'Geral' : 'General');
+
       showNotification(
         isPt
-          ? `Sucesso! ${weeks.length} semanas foram gravadas no Firebase (${savedWeekNames.slice(0, 2).join(', ')}${savedWeekNames.length > 2 ? '...' : ''})!`
-          : `¡Éxito! Se guardaron ${weeks.length} semanas en Firebase!`
+          ? `Sucesso! ${weeks.length} semanas da Reunião (${typeLabel}) foram gravadas no Firebase!`
+          : `¡Éxito! Se guardaron ${weeks.length} semanas (${typeLabel}) en Firebase!`
       );
     } catch (err) {
       console.error('Error applying all parsed weeks:', err);
@@ -2852,6 +2877,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         isOpen={showFileImportModal}
         onClose={() => setShowFileImportModal(false)}
         isPt={isPt}
+        initialMeetingTarget={activeTab === 'weekend' ? 'weekend' : 'midweek'}
         onApplyParsedData={handleApplyParsedData}
         onApplyAllParsedWeeks={handleApplyAllParsedWeeks}
       />

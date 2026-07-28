@@ -12,18 +12,25 @@ interface FileImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   isPt: boolean;
+  initialMeetingTarget?: 'midweek' | 'weekend' | 'both';
   onApplyParsedData: (data: ParsedMeetingData) => void;
-  onApplyAllParsedWeeks?: (weeks: ParsedMeetingData[]) => void;
+  onApplyAllParsedWeeks?: (weeks: ParsedMeetingData[], targetType?: 'midweek' | 'weekend' | 'both') => void;
 }
 
 export const FileImportModal: React.FC<FileImportModalProps> = ({
   isOpen,
   onClose,
   isPt,
+  initialMeetingTarget = 'midweek',
   onApplyParsedData,
   onApplyAllParsedWeeks,
 }) => {
   const [activeInputTab, setActiveInputTab] = useState<'image' | 'file' | 'text'>('image');
+  const [selectedMeetingTarget, setSelectedMeetingTarget] = useState<'midweek' | 'weekend' | 'both'>(initialMeetingTarget);
+
+  React.useEffect(() => {
+    setSelectedMeetingTarget(initialMeetingTarget);
+  }, [initialMeetingTarget, isOpen]);
   
   // File state
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -328,7 +335,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
   const handleConfirmApplySingle = () => {
     const target = parsedWeeks[selectedWeekIdx] || parsedWeeks[0];
     if (target) {
-      onApplyParsedData(target);
+      onApplyParsedData({ ...target, meetingType: selectedMeetingTarget });
       resetAndClose();
     }
   };
@@ -336,10 +343,10 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
   const handleConfirmApplyAll = () => {
     if (parsedWeeks.length > 0) {
       if (onApplyAllParsedWeeks) {
-        onApplyAllParsedWeeks(parsedWeeks);
+        onApplyAllParsedWeeks(parsedWeeks, selectedMeetingTarget);
       } else {
         // Fallback to first week
-        onApplyParsedData(parsedWeeks[0]);
+        onApplyParsedData({ ...parsedWeeks[0], meetingType: selectedMeetingTarget });
       }
       resetAndClose();
     }
@@ -387,6 +394,55 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          {/* Target Meeting Type Banner */}
+          <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-extrabold text-[#1C4123] block">
+                {isPt ? 'Destino da Importação:' : 'Destino de la Importación:'}
+              </span>
+              <span className="text-[11px] text-emerald-800 font-medium">
+                {isPt 
+                  ? 'Escolha para onde esses dados serão enviados (Meio de Semana ou Fim de Semana).' 
+                  : 'Elija adónde se enviarán estos datos (Entre Semana o Fin de Semana).'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-emerald-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedMeetingTarget('midweek')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  selectedMeetingTarget === 'midweek'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                {isPt ? 'Meio de Semana' : 'Entre Semana'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedMeetingTarget('weekend')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  selectedMeetingTarget === 'weekend'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                {isPt ? 'Fim de Semana' : 'Fin de Semana'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedMeetingTarget('both')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  selectedMeetingTarget === 'both'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                {isPt ? 'Ambas' : 'Ambas'}
+              </button>
+            </div>
+          </div>
+
           {/* Option Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
             <div className="flex flex-wrap items-center gap-2">
