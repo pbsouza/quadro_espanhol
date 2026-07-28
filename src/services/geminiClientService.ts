@@ -79,50 +79,94 @@ Regras:
 3. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
 4. Retorne APENAS o JSON puro.`;
 
+export async function getAvailableModelsForKey(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.models)) {
+        const supported = data.models
+          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m: any) => m.name.replace(/^models\//, ''));
+
+        if (supported.length > 0) {
+          // Sort to prioritize fast flash models (2.5-flash, 2.0-flash, 1.5-flash)
+          supported.sort((a: string, b: string) => {
+            const a25 = a.includes('2.5') ? 2 : (a.includes('2.0') ? 1 : 0);
+            const b25 = b.includes('2.5') ? 2 : (b.includes('2.0') ? 1 : 0);
+            if (a25 !== b25) return b25 - a25;
+            const aFlash = a.includes('flash') ? 1 : 0;
+            const bFlash = b.includes('flash') ? 1 : 0;
+            return bFlash - aFlash;
+          });
+          return supported;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not list models via API key:', err);
+  }
+  return ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.5-pro', 'gemini-1.5-pro'];
+}
+
 export async function parseImageWithClientGemini(
   imageBase64: string,
   mimeType: string,
   apiKey: string
 ): Promise<any[]> {
-  const ai = new GoogleGenAI({ apiKey });
   const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+  const candidateModels = await getAvailableModelsForKey(apiKey);
 
-  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
-  let lastError: any = null;
+  let lastErrorMsg = '';
 
-  for (const modelName of modelsToTry) {
+  for (const modelName of candidateModels) {
     try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: {
-          parts: [
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
             {
-              inlineData: {
-                data: cleanBase64,
-                mimeType: mimeType || 'image/jpeg',
-              },
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType || 'image/jpeg',
+                    data: cleanBase64,
+                  },
+                },
+                { text: SCHEDULE_PROMPT },
+              ],
             },
-            { text: SCHEDULE_PROMPT },
           ],
-        },
-        config: {
-          responseMimeType: 'application/json',
-        },
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+        }),
       });
 
-      const responseText = response.text || '{}';
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const msg = errJson?.error?.message || `HTTP ${res.status}`;
+        console.warn(`Model ${modelName} failed (${res.status}): ${msg}`);
+        lastErrorMsg = msg;
+        continue;
+      }
+
+      const resData = await res.json();
+      const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
       if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
         return parsedJSON.weeks;
       }
       return [parsedJSON];
-    } catch (err) {
-      console.warn(`Model ${modelName} failed, trying next...`, err);
-      lastError = err;
+    } catch (err: any) {
+      console.warn(`Model ${modelName} error:`, err);
+      lastErrorMsg = err?.message || String(err);
     }
   }
 
-  throw lastError || new Error('Não foi possível analisar a imagem com os modelos do Gemini.');
+  throw new Error(`Falha na IA Gemini: ${lastErrorMsg || 'Verifique sua chave de API.'}`);
 }
 
 export async function parseDocWithClientGemini(
@@ -131,15 +175,14 @@ export async function parseDocWithClientGemini(
   mimeType: string | undefined,
   apiKey: string
 ): Promise<any[]> {
-  const ai = new GoogleGenAI({ apiKey });
   const parts: any[] = [];
 
   if (fileBase64 && mimeType === 'application/pdf') {
     const cleanBase64 = fileBase64.replace(/^data:application\/pdf;base64,/, '');
     parts.push({
       inlineData: {
-        data: cleanBase64,
         mimeType: 'application/pdf',
+        data: cleanBase64,
       },
     });
   }
@@ -150,30 +193,43 @@ export async function parseDocWithClientGemini(
 
   parts.push({ text: SCHEDULE_PROMPT });
 
-  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
-  let lastError: any = null;
+  const candidateModels = await getAvailableModelsForKey(apiKey);
+  let lastErrorMsg = '';
 
-  for (const modelName of modelsToTry) {
+  for (const modelName of candidateModels) {
     try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: { parts },
-        config: {
-          responseMimeType: 'application/json',
-        },
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+        }),
       });
 
-      const responseText = response.text || '{}';
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const msg = errJson?.error?.message || `HTTP ${res.status}`;
+        console.warn(`Model ${modelName} failed (${res.status}): ${msg}`);
+        lastErrorMsg = msg;
+        continue;
+      }
+
+      const resData = await res.json();
+      const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
       if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
         return parsedJSON.weeks;
       }
       return [parsedJSON];
-    } catch (err) {
-      console.warn(`Model ${modelName} failed, trying next...`, err);
-      lastError = err;
+    } catch (err: any) {
+      console.warn(`Model ${modelName} error:`, err);
+      lastErrorMsg = err?.message || String(err);
     }
   }
 
-  throw lastError || new Error('Não foi possível analisar o documento com os modelos do Gemini.');
+  throw new Error(`Falha na IA Gemini: ${lastErrorMsg || 'Verifique sua chave de API.'}`);
 }
