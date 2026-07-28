@@ -319,8 +319,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setNossaVidaCrista(activeMidweek.nossaVidaCrista || []);
       setFinalSong(activeMidweek.finalSong || '');
       setFinalPrayer(activeMidweek.finalPrayer || '');
+    } else {
+      setPresident('');
+      setInitialSong('');
+      setInitialPrayer('');
+      setCounselorSalaB('');
+      setTalkTitle('');
+      setTalkSpeaker('');
+      setGemsSpeaker('');
+      setReadingMain('');
+      setReadingSalaB('');
+      setFacaSeuMelhor([]);
+      setMiddleSong('');
+      setNossaVidaCrista([]);
+      setFinalSong('');
+      setFinalPrayer('');
     }
-  }, [selectedMidweekIndex, midweekMeetings]);
+  }, [selectedMidweekIndex, midweekMeetings, activeMidweek]);
 
   // Sync form state when selected weekend meeting changes
   React.useEffect(() => {
@@ -335,8 +350,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setWtReader(activeWeekend.watchtowerReader || '');
       setWeekendFinalSong(activeWeekend.finalSong || '');
       setWeekendFinalPrayer(activeWeekend.finalPrayer || '');
+    } else {
+      setWeekendTalkTitle('');
+      setWeekendSpeaker('');
+      setWeekendCongregation('');
+      setWeekendPresident('');
+      setWeekendInitialSong('');
+      setWtTitle('');
+      setWtConductor('');
+      setWtReader('');
+      setWeekendFinalSong('');
+      setWeekendFinalPrayer('');
     }
-  }, [selectedWeekendIndex, weekendMeetings]);
+  }, [selectedWeekendIndex, weekendMeetings, activeWeekend]);
 
   const handleApplyParsedData = (data: ParsedMeetingData) => {
     if (data.president) setPresident(data.president);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MidweekMeeting, MinisterioPart, VidaCristaPart, Announcement, AppLanguage } from '../types';
-import { saveMidweekMeeting, saveAnnouncement, seedAllData } from '../services/firestoreService';
+import { saveMidweekMeeting, saveAnnouncement, clearAllDatabaseData } from '../services/firestoreService';
 import { X, Plus, Trash2, Save, RefreshCw, CheckCircle } from 'lucide-react';
 
 interface AdminModalProps {
@@ -173,12 +173,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   };
 
   const handleResetData = async () => {
-    if (confirm(isPt ? 'Deseja restaurar todos os dados iniciais do Firebase?' : '¿Restaurar todos los datos iniciales?')) {
+    if (confirm(isPt ? 'Deseja ZERAR permanentemente todos os dados do banco de dados?' : '¿Limpiar todos los datos del sistema?')) {
       setSaving(true);
-      await seedAllData();
-      setSaving(false);
-      setSuccessMsg(isPt ? 'Banco de dados restaurado!' : '¡Base de datos restaurada!');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      try {
+        await clearAllDatabaseData();
+        setSuccessMsg(isPt ? 'Banco de dados zerado com sucesso!' : '¡Base de datos limpiada!');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } catch (err) {
+        console.error(err);
+        alert(isPt ? 'Erro ao zerar banco de dados.' : 'Error al limpiar la base de datos.');
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -500,8 +506,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
             disabled={saving}
             className="flex items-center gap-1.5 text-stone-600 hover:text-stone-900 bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded-xl text-xs font-bold transition"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Restaurar Dados</span>
+            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+            <span className="text-red-700 font-bold">{isPt ? 'Zerar Banco de Dados' : 'Limpiar Base de Datos'}</span>
           </button>
 
           <button
