@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { FileText, Upload, Sparkles, X, Check, FileCode, AlertCircle, Camera, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { FileText, Upload, Sparkles, X, Check, FileCode, AlertCircle, Camera, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
 import { extractTextFromFile, parseMeetingText, ParsedMeetingData } from '../utils/fileImportParser';
+import { 
+  getStoredGeminiApiKey, 
+  setStoredGeminiApiKey, 
+  parseImageWithClientGemini, 
+  parseDocWithClientGemini 
+} from '../services/geminiClientService';
 
 interface FileImportModalProps {
   isOpen: boolean;
@@ -30,6 +36,11 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [parsedWeeks, setParsedWeeks] = useState<ParsedMeetingData[]>([]);
   const [selectedWeekIdx, setSelectedWeekIdx] = useState<number>(0);
+
+  // API Key Prompt State for GitHub Pages / Static hosting
+  const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [pendingAction, setPendingAction] = useState<'image' | 'doc' | null>(null);
 
   if (!isOpen) return null;
 
@@ -125,40 +136,64 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
     setIsProcessing(true);
     setErrorMsg('');
     setParsedWeeks([]);
+    setShowApiKeyPrompt(false);
 
     try {
-      const response = await fetch('/api/parse-schedule-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageBase64: imagePreview,
-          mimeType: imageFile.type || 'image/jpeg',
-          isPt,
-        }),
-      });
+      let rawWeeksList: any[] = [];
+      let serverWorked = false;
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Server non-JSON image response:', text);
-        throw new Error(isPt ? 'Erro de comunicação com o servidor de IA. Tente novamente.' : 'Error de comunicación con el servidor IA.');
+      // 1. Try server endpoint first
+      try {
+        const response = await fetch('/api/parse-schedule-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: imagePreview,
+            mimeType: imageFile.type || 'image/jpeg',
+            isPt,
+          }),
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const resData = await response.json();
+          if (response.ok && resData.success) {
+            rawWeeksList = resData.weeks && resData.weeks.length > 0 ? resData.weeks : [resData.data];
+            serverWorked = true;
+          }
+        }
+      } catch (srvErr) {
+        console.warn('Backend image route unavailable (static host/GitHub Pages), falling back to client Gemini:', srvErr);
       }
 
-      const resData = await response.json();
+      // 2. Client-side Gemini fallback if on GitHub Pages / static host
+      if (!serverWorked) {
+        const apiKey = getStoredGeminiApiKey();
+        if (!apiKey) {
+          setShowApiKeyPrompt(true);
+          setPendingAction('image');
+          setIsProcessing(false);
+          return;
+        }
 
-      if (!response.ok || !resData.success) {
-        throw new Error(resData.error || (isPt ? 'Erro ao processar imagem.' : 'Error al procesar la imagen.'));
+        rawWeeksList = await parseImageWithClientGemini(
+          imagePreview,
+          imageFile.type || 'image/jpeg',
+          apiKey
+        );
       }
 
-      const list = resData.weeks && resData.weeks.length > 0 ? resData.weeks : [resData.data];
-      const formatted = formatRawWeeks(list);
+      const formatted = formatRawWeeks(rawWeeksList);
       setParsedWeeks(formatted);
       setSelectedWeekIdx(0);
     } catch (err: any) {
       console.error('Gemini image OCR error:', err);
-      setErrorMsg(err?.message || (isPt ? 'Erro ao ler a foto. Tente enviar uma foto com melhor iluminação.' : 'Error al leer la foto. Intente enviar una foto con mejor iluminación.'));
+      setErrorMsg(
+        err?.message ||
+          (isPt
+            ? 'Erro ao ler a foto. Verifique a iluminação ou sua Chave de API Gemini.'
+            : 'Error al leer la foto. Verifique la imagen o su Clave de API Gemini.')
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -168,6 +203,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
     setIsProcessing(true);
     setErrorMsg('');
     setParsedWeeks([]);
+    setShowApiKeyPrompt(false);
 
     try {
       let rawText = '';
@@ -205,14 +241,14 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
         rawText = pastedText;
       }
 
-      // Try parsing with Gemini AI backend
       let aiWeeksResult: ParsedMeetingData[] = [];
+      let serverWorked = false;
+
+      // 1. Try server endpoint first
       try {
         const response = await fetch('/api/parse-schedule-document', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             documentText: rawText || undefined,
             fileBase64: pdfBase64,
@@ -227,14 +263,33 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
             const list = resData.weeks && resData.weeks.length > 0 ? resData.weeks : (resData.data ? [resData.data] : []);
             if (list.length > 0) {
               aiWeeksResult = formatRawWeeks(list);
+              serverWorked = true;
             }
           }
-        } else {
-          const text = await response.text();
-          console.warn('Server non-JSON doc response:', text);
         }
-      } catch (aiErr) {
-        console.warn('AI document parsing fallback to local parser:', aiErr);
+      } catch (srvErr) {
+        console.warn('Backend doc route unavailable (static host/GitHub Pages), falling back to client Gemini:', srvErr);
+      }
+
+      // 2. Client-side Gemini fallback for GitHub Pages
+      if (!serverWorked) {
+        const apiKey = getStoredGeminiApiKey();
+        if (apiKey) {
+          try {
+            const rawWeeks = await parseDocWithClientGemini(rawText, pdfBase64, docFile?.type, apiKey);
+            if (rawWeeks && rawWeeks.length > 0) {
+              aiWeeksResult = formatRawWeeks(rawWeeks);
+            }
+          } catch (clientGeminiErr) {
+            console.warn('Client Gemini parsing error, falling back to local regex parser:', clientGeminiErr);
+          }
+        } else if (pdfBase64 || activeInputTab === 'file') {
+          // If PDF/File and no API key set on static host, prompt for API key
+          setShowApiKeyPrompt(true);
+          setPendingAction('doc');
+          setIsProcessing(false);
+          return;
+        }
       }
 
       if (aiWeeksResult.length > 0) {
@@ -255,6 +310,18 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
       );
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSaveApiKey = () => {
+    if (!apiKeyInput.trim()) return;
+    setStoredGeminiApiKey(apiKeyInput.trim());
+    setShowApiKeyPrompt(false);
+    setErrorMsg('');
+    if (pendingAction === 'image') {
+      handleAnalyzeImageWithGemini();
+    } else if (pendingAction === 'doc') {
+      handleAnalyzeTextOrDoc();
     }
   };
 
@@ -321,52 +388,112 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           {/* Option Tabs */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 pb-3">
-            <button
-              onClick={() => {
-                setActiveInputTab('image');
-                setErrorMsg('');
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeInputTab === 'image'
-                  ? 'bg-[#1C4123] text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              <Camera className="w-4 h-4 text-amber-300" />
-              <span>{isPt ? 'Foto / Imagem (Visão IA)' : 'Foto / Imagen (Visión IA)'}</span>
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setActiveInputTab('image');
+                  setErrorMsg('');
+                  setShowApiKeyPrompt(false);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
+                  activeInputTab === 'image'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                <Camera className="w-4 h-4 text-amber-300" />
+                <span>{isPt ? 'Foto / Imagem (Visão IA)' : 'Foto / Imagen (Visión IA)'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveInputTab('file');
+                  setErrorMsg('');
+                  setShowApiKeyPrompt(false);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
+                  activeInputTab === 'file'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                <span>{isPt ? 'Documento (PDF, TXT, RTF)' : 'Documento (PDF, TXT, RTF)'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveInputTab('text');
+                  setErrorMsg('');
+                  setShowApiKeyPrompt(false);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
+                  activeInputTab === 'text'
+                    ? 'bg-[#1C4123] text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{isPt ? 'Colar Texto' : 'Pegar Texto'}</span>
+              </button>
+            </div>
 
             <button
               onClick={() => {
-                setActiveInputTab('file');
-                setErrorMsg('');
+                setShowApiKeyPrompt(!showApiKeyPrompt);
+                setPendingAction(null);
               }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeInputTab === 'file'
-                  ? 'bg-[#1C4123] text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
+              title={isPt ? 'Configurar Chave Gemini (GitHub Pages)' : 'Configurar Clave Gemini'}
+              className="p-2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             >
-              <Upload className="w-4 h-4" />
-              <span>{isPt ? 'Documento (PDF, TXT, RTF)' : 'Documento (PDF, TXT, RTF)'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveInputTab('text');
-                setErrorMsg('');
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition cursor-pointer ${
-                activeInputTab === 'text'
-                  ? 'bg-[#1C4123] text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>{isPt ? 'Colar Texto' : 'Pegar Texto'}</span>
+              <Key className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isPt ? 'Chave IA' : 'Clave IA'}</span>
             </button>
           </div>
+
+          {/* API Key Prompt for Static Hosting / GitHub Pages */}
+          {showApiKeyPrompt && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-xs space-y-3 animate-fadeIn">
+              <div className="flex items-center gap-2 font-extrabold text-amber-950 text-sm">
+                <Key className="w-5 h-5 text-amber-700" />
+                <span>{isPt ? 'Chave de API Gemini (GitHub Pages)' : 'Clave de API Gemini'}</span>
+              </div>
+              <p className="text-amber-900 leading-relaxed font-medium">
+                {isPt
+                  ? 'Para utilizar a Inteligência Artificial Gemini diretamente no GitHub Pages (site estático sem servidor), insira sua Chave de API do Google AI Studio. A chave fica salva apenas no seu navegador.'
+                  : 'Para usar Inteligencia Artificial en GitHub Pages, ingrese su Clave de API Gemini de Google AI Studio. Se guarda en su navegador.'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder={isPt ? 'Cole sua AI Studio API Key aqui...' : 'Pegue su AI Studio API Key aquí...'}
+                  className="flex-1 bg-white border border-amber-300 rounded-xl px-3 py-2 text-stone-800 font-mono text-xs focus:border-amber-600 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveApiKey}
+                  disabled={!apiKeyInput.trim()}
+                  className="bg-[#1C4123] hover:bg-[#143019] text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {isPt ? 'Salvar e Continuar' : 'Guardar y Continuar'}
+                </button>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                {isPt ? 'Não tem uma chave?' : '¿No tiene clave? '}{' '}
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold underline text-amber-950 hover:text-amber-700"
+                >
+                  {isPt ? 'Obter chave gratuita no Google AI Studio' : 'Obtener clave gratuita en Google AI Studio'}
+                </a>
+              </p>
+            </div>
+          )}
 
           {/* Input Tab: Camera / Image OCR */}
           {activeInputTab === 'image' && (
