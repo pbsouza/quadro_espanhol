@@ -99,14 +99,17 @@ export async function getAvailableModelsForKey(apiKey: string): Promise<string[]
           .map((m: any) => m.name.replace(/^models\//, ''));
 
         if (supported.length > 0) {
-          // Sort to prioritize fast flash models (2.5-flash, 2.0-flash, 1.5-flash)
+          // Sort to prioritize fast flash models (3.6-flash, flash-latest, 3.1-flash-lite)
           supported.sort((a: string, b: string) => {
-            const a25 = a.includes('2.5') ? 2 : (a.includes('2.0') ? 1 : 0);
-            const b25 = b.includes('2.5') ? 2 : (b.includes('2.0') ? 1 : 0);
-            if (a25 !== b25) return b25 - a25;
-            const aFlash = a.includes('flash') ? 1 : 0;
-            const bFlash = b.includes('flash') ? 1 : 0;
-            return bFlash - aFlash;
+            const getScore = (m: string) => {
+              if (m.includes('3.6-flash') || m === 'gemini-3.6-flash') return 10;
+              if (m.includes('flash-latest') || m === 'gemini-flash-latest') return 9;
+              if (m.includes('3.1-flash-lite')) return 8;
+              if (m.includes('3.1-pro')) return 7;
+              if (m.includes('flash')) return 5;
+              return 1;
+            };
+            return getScore(b) - getScore(a);
           });
           return supported;
         }
@@ -115,7 +118,7 @@ export async function getAvailableModelsForKey(apiKey: string): Promise<string[]
   } catch (err) {
     console.warn('Could not list models via API key:', err);
   }
-  return ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.5-pro', 'gemini-1.5-pro'];
+  return ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
 }
 
 export async function parseImageWithClientGemini(

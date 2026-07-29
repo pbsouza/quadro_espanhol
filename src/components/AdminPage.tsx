@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppLanguage, 
   PageView, 
@@ -269,6 +269,46 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Clear Database Confirmation States
   const [showClearConfirmText, setShowClearConfirmText] = useState(false);
   const [confirmInputText, setConfirmInputText] = useState('');
+
+  // Close open modals when user presses hardware/browser Back button
+  useEffect(() => {
+    const isModalOpen =
+      showFileImportModal ||
+      showNewMidweekModal ||
+      showNewWeekendModal ||
+      showNewCleaningModal ||
+      showNewGroupModal ||
+      showNewWitnessingModal ||
+      showClearConfirmText ||
+      confirmModal.isOpen;
+
+    if (!isModalOpen) return;
+
+    const handleModalPopState = () => {
+      setShowFileImportModal(false);
+      setShowNewMidweekModal(false);
+      setShowNewWeekendModal(false);
+      setShowNewCleaningModal(false);
+      setShowNewGroupModal(false);
+      setShowNewWitnessingModal(false);
+      setShowClearConfirmText(false);
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    };
+
+    window.addEventListener('popstate', handleModalPopState);
+    return () => {
+      window.removeEventListener('popstate', handleModalPopState);
+    };
+  }, [
+    showFileImportModal,
+    showNewMidweekModal,
+    showNewWeekendModal,
+    showNewCleaningModal,
+    showNewGroupModal,
+    showNewWitnessingModal,
+    showClearConfirmText,
+    confirmModal.isOpen,
+  ]);
 
   // Local editable state for Midweek
   const [president, setPresident] = useState(activeMidweek?.president || '');

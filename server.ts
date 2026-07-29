@@ -106,7 +106,7 @@ Regras:
 4. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
 5. Retorne APENAS o JSON puro.`;
 
-      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.5-pro"];
+      const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let responseText = "{}";
       let lastErr: any = null;
 
@@ -261,7 +261,7 @@ Regras:
 
       contentsParts.push({ text: prompt });
 
-      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.5-pro"];
+      const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let responseText = "{}";
       let lastErr: any = null;
 
