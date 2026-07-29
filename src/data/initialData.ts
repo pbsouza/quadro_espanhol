@@ -4,28 +4,26 @@ import { get21WeeksWindow, formatYYYYMMDD } from '../utils/weekUtils';
 const monthsPt = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const monthsEs = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-function formatWeekLabel(monday: Date, isPt: boolean = true): string {
+function formatWeekLabel(monday: Date): string {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  const monDay = monday.getDate();
-  const sunDay = sunday.getDate();
-  const monMonth = isPt ? monthsPt[monday.getMonth()] : monthsEs[monday.getMonth()];
-  const sunMonth = isPt ? monthsPt[sunday.getMonth()] : monthsEs[sunday.getMonth()];
-  const year = sunday.getFullYear();
+  const monDay = String(monday.getDate()).padStart(2, '0');
+  const monMonth = String(monday.getMonth() + 1).padStart(2, '0');
+  const monYear = monday.getFullYear();
 
-  if (monday.getMonth() === sunday.getMonth()) {
-    return `${monDay} - ${sunDay} de ${monMonth} de ${year}`;
-  } else {
-    return `${monDay} de ${monMonth} - ${sunDay} de ${sunMonth} de ${year}`;
-  }
+  const sunDay = String(sunday.getDate()).padStart(2, '0');
+  const sunMonth = String(sunday.getMonth() + 1).padStart(2, '0');
+  const sunYear = sunday.getFullYear();
+
+  return `${monDay}/${monMonth}/${monYear} - ${sunDay}/${sunMonth}/${sunYear}`;
 }
 
-function formatWeekendLabel(sunday: Date, isPt: boolean = true): string {
-  const day = sunday.getDate();
-  const month = isPt ? monthsPt[sunday.getMonth()] : monthsEs[sunday.getMonth()];
+function formatWeekendLabel(sunday: Date): string {
+  const day = String(sunday.getDate()).padStart(2, '0');
+  const month = String(sunday.getMonth() + 1).padStart(2, '0');
   const year = sunday.getFullYear();
-  return `${day} de ${month} de ${year}`;
+  return `${day}/${month}/${year}`;
 }
 
 const sampleSpeakers = [
@@ -83,8 +81,8 @@ export function generate21WeeksMidweekMeetings(refDate: Date = new Date()): Midw
     return {
       id: `week-${weekStr}`,
       weekId: weekStr,
-      weekLabel: formatWeekLabel(monday, true),
-      weekLabelEs: formatWeekLabel(monday, false),
+      weekLabel: formatWeekLabel(monday),
+      weekLabelEs: formatWeekLabel(monday),
       president: sampleSpeakers[speakerIdx],
       initialSong: `Cântico ${(index * 7 + 12) % 150 + 1}`,
       initialPrayer: sampleSpeakers[(speakerIdx + 1) % sampleSpeakers.length],
@@ -182,7 +180,7 @@ export function generate21WeeksWeekendMeetings(refDate: Date = new Date()): Week
     return {
       id: `w-${sundayStr}`,
       weekId: weekStr,
-      weekLabel: formatWeekendLabel(sunday, true),
+      weekLabel: formatWeekendLabel(sunday),
       publicTalkTitle: talkTitle,
       speakerName: sampleSpeakers[(speakerIdx + 2) % sampleSpeakers.length],
       speakerCongregation: 'Congregação Central',

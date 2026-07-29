@@ -1,3 +1,5 @@
+import { formatToDDMMYYYY } from './dateUtils';
+
 /**
  * Text utility functions for cleaning and formatting strings.
  */
@@ -23,12 +25,19 @@ export function cleanPartTitle(title: string | undefined | null): string {
 }
 
 /**
- * Cleans titles inside a parsed week object (facaSeuMelhor, nossaVidaCrista)
+ * Cleans titles and dates inside a parsed week object (weekLabel, weekLabelEs, facaSeuMelhor, nossaVidaCrista)
  */
 export function sanitizeParsedWeekTitles<T extends Record<string, any>>(week: T): T {
   if (!week || typeof week !== 'object') return week;
 
   const copy: Record<string, any> = { ...week };
+
+  if (copy.weekLabel) {
+    copy.weekLabel = formatToDDMMYYYY(copy.weekLabel);
+  }
+  if (copy.weekLabelEs) {
+    copy.weekLabelEs = formatToDDMMYYYY(copy.weekLabelEs);
+  }
 
   if (Array.isArray(copy.facaSeuMelhor)) {
     copy.facaSeuMelhor = copy.facaSeuMelhor.map((p: any) => ({

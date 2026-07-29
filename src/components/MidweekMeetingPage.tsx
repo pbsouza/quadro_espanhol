@@ -5,6 +5,7 @@ import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
 import { findCurrentWeekIndex } from '../utils/weekUtils';
 import { cleanPartTitle } from '../utils/textUtils';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 
 interface MidweekMeetingPageProps {
   meeting: MidweekMeeting | undefined;
@@ -77,9 +78,11 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
     );
   }
 
-  const weekLabel = language === 'pt'
+  const rawWeekLabel = language === 'pt'
     ? meeting.weekLabel
     : meeting.weekLabelEs || meeting.weekLabel;
+
+  const weekLabel = formatToDDMMYYYY(rawWeekLabel);
 
   const tesourosList = meeting?.tesouros || [];
   const facaSeuMelhorList = meeting?.facaSeuMelhor || [];

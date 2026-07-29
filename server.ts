@@ -52,7 +52,7 @@ Estrutura JSON obrigatória:
 {
   "weeks": [
     {
-      "weekLabel": "ex: 3 a 9 de Março de 2026" (extraia o período/data da semana indicado no cabeçalho),
+      "weekLabel": "ex: 03/03/2026 - 09/03/2026 ou 03/03/2026" (ATENÇÃO: extraia no formato dd/mm/aaaa. NUNCA utilize aaaa/mm/dd ou aaaa-mm-dd),
       "weekDate": "YYYY-MM-DD" (se puder determinar a data de início YYYY-MM-DD, senão null),
       "meetingType": "midweek" | "weekend" | "both",
       "president": string ou null,
@@ -104,9 +104,10 @@ Regras:
 1. Se houver MAIS DE UMA SEMANA na imagem, SEPARE CADA SEMANA EM UM OBJETO NO ARRAY "weeks".
 2. Identifique nomes de irmãos, títulos e minutos com clareza.
 3. REMOVA QUALQUER NUMERAÇÃO DO INÍCIO DOS TÍTULOS DAS PARTES (ex: extraia "Empiece conversaciones" e NÃO "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
-4. Não invente nomes se não puder ler. Deixe em branco ou null.
-5. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
-6. Retorne APENAS o JSON puro.`;
+4. FORMATO DE DATAS: Todas as datas e rótulos de semana (weekLabel) DEVEM estar estritamente no formato dd/mm/aaaa (ex: '29/07/2026' ou '03/03/2026 - 09/03/2026'). NUNCA utilize o formato aaaa/mm/dd ou aaaa-mm-dd.
+5. Não invente nomes se não puder ler. Deixe em branco ou null.
+6. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
+7. Retorne APENAS o JSON puro.`;
 
       const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let responseText = "{}";

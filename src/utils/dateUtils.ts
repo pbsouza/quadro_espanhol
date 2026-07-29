@@ -16,31 +16,25 @@ export function formatToDDMMYYYY(dateInput: string | Date | undefined | null): s
     return `${day}/${month}/${year}`;
   }
 
-  const str = String(dateInput).trim();
+  let str = String(dateInput).trim();
   if (!str) return '';
 
-  // Already dd/mm/aaaa or dd/mm/yy
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-    return str;
+  // Pure ISO timestamp like "2026-07-29T00:00:00.000Z"
+  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+    const parts = str.substring(0, 10).split('-');
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
 
-  // Matches YYYY-MM-DD or YYYY-MM-DDT...
-  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymdMatch) {
-    const [, year, month, day] = ymdMatch;
-    return `${day}/${month}/${year}`;
-  }
+  // Convert any YYYY/MM/DD or YYYY-MM-DD or YYYY.MM.DD date inside the string
+  // e.g. "2026/07/29 | JEREMÍAS 20, 21" -> "29/07/2026 | JEREMÍAS 20, 21"
+  // e.g. "2026-07-29 | JEREMÍAS 20, 21" -> "29/07/2026 | JEREMÍAS 20, 21"
+  // e.g. "2026/07/29" -> "29/07/2026"
+  // e.g. "2026-07-29" -> "29/07/2026"
+  const converted = str.replace(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b/g, (_match, y, m, d) => {
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+  });
 
-  // Try parsing Date
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    const day = String(parsed.getDate()).padStart(2, '0');
-    const month = String(parsed.getMonth() + 1).padStart(2, '0');
-    const year = parsed.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
-
-  return str;
+  return converted;
 }
 
 /**

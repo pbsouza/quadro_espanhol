@@ -491,7 +491,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           const weekId = existingMidweek?.weekId || data.weekDate || calculatedWeekDate;
           const midweekId = existingMidweek?.id || `midweek_${weekId}`;
-          const weekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
+          const rawWeekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
+          const weekLabel = formatToDDMMYYYY(rawWeekLabel);
 
           if (existingMidweek) {
             usedMidweekIds.add(existingMidweek.id);
@@ -563,7 +564,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           const weekId = existingWeekend?.weekId || data.weekDate || calculatedWeekDate;
           const weekendId = existingWeekend?.id || `weekend_${weekId}`;
-          const weekLabel = data.weekLabel || existingWeekend?.weekLabel || `Semana ${i + 1}`;
+          const rawWeekLabel = data.weekLabel || existingWeekend?.weekLabel || `Semana ${i + 1}`;
+          const weekLabel = formatToDDMMYYYY(rawWeekLabel);
 
           if (existingWeekend) {
             usedWeekendIds.add(existingWeekend.id);
@@ -1430,7 +1432,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {isPt ? 'Editar Reunião Meio de Semana' : 'Editar Reunión Entre Semana'}
               </h2>
               <p className="text-xs text-stone-500 font-medium">
-                {activeMidweek?.weekLabel || 'Semana Ativa'}
+                {formatToDDMMYYYY(activeMidweek?.weekLabel) || 'Semana Ativa'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1465,7 +1467,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   {isPt ? 'Selecionar Semana para Editar:' : 'Seleccionar Semana para Editar:'}
                 </span>
                 <span className="text-xs text-stone-600 font-medium">
-                  {activeMidweek?.weekLabel || (isPt ? 'Nenhuma semana selecionada' : 'Ninguna semana')}
+                  {formatToDDMMYYYY(activeMidweek?.weekLabel) || (isPt ? 'Nenhuma semana selecionada' : 'Ninguna semana')}
                 </span>
               </div>
             </div>
@@ -1478,7 +1480,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               >
                 {allMidweekList.map((m, idx) => (
                   <option key={m.id || idx} value={idx}>
-                    📅 {m.weekLabel} {idx === 0 ? `(${isPt ? 'Semana Atual' : 'Semana Actual'})` : ''}
+                    📅 {formatToDDMMYYYY(m.weekLabel)} {idx === 0 ? `(${isPt ? 'Semana Atual' : 'Semana Actual'})` : ''}
                   </option>
                 ))}
               </select>
@@ -1860,7 +1862,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {isPt ? 'Editar Reunião Fim de Semana' : 'Editar Reunión Fin de Semana'}
               </h2>
               <p className="text-xs text-stone-500 font-medium">
-                {activeWeekend?.weekLabel || 'Domingo'}
+                {formatToDDMMYYYY(activeWeekend?.weekLabel) || 'Domingo'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1895,7 +1897,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   {isPt ? 'Selecionar Data para Editar:' : 'Seleccionar Fecha para Editar:'}
                 </span>
                 <span className="text-xs text-stone-600 font-medium">
-                  {activeWeekend?.weekLabel || (isPt ? 'Nenhuma data selecionada' : 'Ninguna fecha')}
+                  {formatToDDMMYYYY(activeWeekend?.weekLabel) || (isPt ? 'Nenhuma data selecionada' : 'Ninguna fecha')}
                 </span>
               </div>
             </div>
@@ -1908,7 +1910,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               >
                 {allWeekendList.map((m, idx) => (
                   <option key={m.id || idx} value={idx}>
-                    📅 {m.weekLabel} {idx === 0 ? `(${isPt ? 'Data Atual' : 'Fecha Actual'})` : ''}
+                    📅 {formatToDDMMYYYY(m.weekLabel)} {idx === 0 ? `(${isPt ? 'Data Atual' : 'Fecha Actual'})` : ''}
                   </option>
                 ))}
               </select>

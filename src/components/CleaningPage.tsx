@@ -3,6 +3,7 @@ import { CleaningSchedule, AppLanguage, PageView } from '../types';
 import { ArrowLeft, Menu, Sparkles, CheckCircle2, User } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 
 interface CleaningPageProps {
   cleaningList: CleaningSchedule[];
@@ -71,7 +72,7 @@ export const CleaningPage: React.FC<CleaningPageProps> = ({
             >
               <div className="flex items-center justify-between pb-3 border-b border-stone-100">
                 <span className="text-xs font-bold bg-[#1C4123] text-white px-3 py-1 rounded-full">
-                  {item.weekLabel}
+                  {formatToDDMMYYYY(item.weekLabel)}
                 </span>
                 <div className="flex items-center gap-1 text-xs text-stone-600 font-medium">
                   <User className="w-3.5 h-3.5 text-[#1C4123]" />

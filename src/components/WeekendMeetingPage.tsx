@@ -4,6 +4,7 @@ import { ArrowLeft, Menu, BookOpen, User, Music, Mic } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
 import { findCurrentWeekIndex } from '../utils/weekUtils';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 
 interface WeekendMeetingPageProps {
   meeting: WeekendMeeting | undefined;
@@ -134,14 +135,14 @@ export const WeekendMeetingPage: React.FC<WeekendMeetingPageProps> = ({
 
           <div className="text-center bg-[#E8F0E6] py-1.5 px-3 rounded-lg border border-[#D0E2CC]">
             <span className="text-xs sm:text-sm font-bold text-[#1C4123]">
-              📅 {meeting?.weekLabel || '3 de Agosto de 2025'}
+              📅 {formatToDDMMYYYY(meeting?.weekLabel) || '3 de Agosto de 2025'}
             </span>
           </div>
         </div>
       ) : (
         <div className="text-center bg-[#E8F0E6] py-2 px-3 rounded-xl border border-[#D0E2CC] mb-5">
           <span className="text-sm font-bold text-[#1C4123]">
-            {meeting?.weekLabel || '3 de Agosto de 2025'}
+            {formatToDDMMYYYY(meeting?.weekLabel) || '3 de Agosto de 2025'}
           </span>
         </div>
       )}

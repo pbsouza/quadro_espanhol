@@ -3,6 +3,7 @@ import { PublicWitnessingSchedule, AppLanguage, PageView } from '../types';
 import { ArrowLeft, Menu, MapPin, Clock, Users } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 
 interface WitnessingPageProps {
   witnessingList: PublicWitnessingSchedule[];
@@ -62,7 +63,7 @@ export const WitnessingPage: React.FC<WitnessingPageProps> = ({
               <div className="grid grid-cols-2 gap-2 text-xs bg-stone-50 p-2.5 rounded-xl border border-stone-100 mb-3">
                 <div>
                   <span className="text-stone-500 font-semibold block">{t.dateOrPeriod}:</span>
-                  <span className="font-bold text-stone-900">{item.dayOfWeek}</span>
+                  <span className="font-bold text-stone-900">{formatToDDMMYYYY(item.dayOfWeek)}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-stone-500" />

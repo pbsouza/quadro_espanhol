@@ -35,7 +35,7 @@ Estrutura JSON obrigatória:
 {
   "weeks": [
     {
-      "weekLabel": "ex: 3 a 9 de Março de 2026" (período indicado no cabeçalho),
+      "weekLabel": "ex: 03/03/2026 - 09/03/2026 ou 03/03/2026" (ATENÇÃO: extraia no formato dd/mm/aaaa. NUNCA utilize aaaa/mm/dd ou aaaa-mm-dd),
       "weekDate": "YYYY-MM-DD" (se puder determinar a data de início YYYY-MM-DD, senão null),
       "meetingType": "midweek" | "weekend" | "both",
       "president": string ou null,
@@ -87,8 +87,9 @@ Regras:
 1. Se houver MAIS DE UMA SEMANA, SEPARE CADA SEMANA EM UM ELEMENTO NO ARRAY "weeks"!
 2. Extraia nomes de irmãos, oradores, ajudantes, leitores, presidentes e cânticos para cada semana.
 3. REMOVA QUALQUER NUMERAÇÃO DO INÍCIO DOS TÍTULOS DAS PARTES (ex: extraia "Empiece conversaciones" e NÃO "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
-4. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
-5. Retorne APENAS o JSON puro.`;
+4. FORMATO DE DATAS: Todas as datas e rótulos de semana (weekLabel) DEVEM estar estritamente no formato dd/mm/aaaa (ex: '29/07/2026' ou '03/03/2026 - 09/03/2026'). NUNCA utilize o formato aaaa/mm/dd ou aaaa-mm-dd.
+5. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
+6. Retorne APENAS o JSON puro.`;
 
 export async function getAvailableModelsForKey(apiKey: string): Promise<string[]> {
   try {
