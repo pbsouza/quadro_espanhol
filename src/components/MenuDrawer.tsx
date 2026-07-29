@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { PageView, AppLanguage } from '../types';
 import { X, Home, BookOpen, Calendar, Sparkles, Users, MapPin, Megaphone, Settings } from 'lucide-react';
 import { getTranslation } from '../data/translations';
-import { useModalBackHandler } from '../hooks/useModalBackHandler';
 
 interface MenuDrawerProps {
   isOpen: boolean;
@@ -20,9 +19,6 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   language,
   onOpenAdmin,
 }) => {
-  // Handle mobile hardware back button to close drawer
-  useModalBackHandler(isOpen, onClose);
-
   const t = getTranslation(language);
 
   const navItems = [

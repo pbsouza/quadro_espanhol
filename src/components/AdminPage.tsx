@@ -56,8 +56,7 @@ import {
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { FileImportModal } from './FileImportModal';
-import { ParsedMeetingData, cleanPartTitle } from '../utils/fileImportParser';
-import { useModalBackHandler } from '../hooks/useModalBackHandler';
+import { ParsedMeetingData } from '../utils/fileImportParser';
 
 const formatWeekLabelFromDate = (dateStr: string, isPtLang: boolean = true): string => {
   if (!dateStr) return '';
@@ -249,14 +248,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [newWitnessingTime, setNewWitnessingTime] = useState('09:00 - 11:00');
   const [newWitnessingPublishers, setNewWitnessingPublishers] = useState('');
 
-  // Intercept mobile back button to close sub-modals
-  useModalBackHandler(showNewMidweekModal, () => setShowNewMidweekModal(false));
-  useModalBackHandler(showNewWeekendModal, () => setShowNewWeekendModal(false));
-  useModalBackHandler(showNewCleaningModal, () => setShowNewCleaningModal(false));
-  useModalBackHandler(showNewGroupModal, () => setShowNewGroupModal(false));
-  useModalBackHandler(showNewWitnessingModal, () => setShowNewWitnessingModal(false));
-  useModalBackHandler(confirmModal.isOpen, () => setConfirmModal(prev => ({ ...prev, isOpen: false })));
-
   // Login Authentication State
   const storedPin = localStorage.getItem('admin_pin') || '1234';
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
@@ -388,11 +379,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (data.readingMain) setReadingMain(data.readingMain);
       if (data.readingSalaB) setReadingSalaB(data.readingSalaB);
       if (data.facaSeuMelhor && data.facaSeuMelhor.length > 0) {
-        setFacaSeuMelhor(data.facaSeuMelhor.map(p => ({ ...p, title: cleanPartTitle(p.title) })) as MinisterioPart[]);
+        setFacaSeuMelhor(data.facaSeuMelhor as MinisterioPart[]);
       }
       if (data.middleSong) setMiddleSong(data.middleSong);
       if (data.nossaVidaCrista && data.nossaVidaCrista.length > 0) {
-        setNossaVidaCrista(data.nossaVidaCrista.map(p => ({ ...p, title: cleanPartTitle(p.title) })) as VidaCristaPart[]);
+        setNossaVidaCrista(data.nossaVidaCrista as VidaCristaPart[]);
       }
       if (data.finalSong) setFinalSong(data.finalSong);
       if (data.finalPrayer) setFinalPrayer(data.finalPrayer);
@@ -484,7 +475,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               ? (data.facaSeuMelhor as MinisterioPart[])
               : (existingMidweek?.facaSeuMelhor || [])).map((part, pIdx) => ({
                 id: part.id || `f_${pIdx + 1}`,
-                title: cleanPartTitle(part.title || ''),
+                title: part.title || '',
                 durationMin: Number(part.durationMin) || 3,
                 assignedMain: part.assignedMain || '',
                 assignedAssistant: part.assignedAssistant || '',
@@ -497,7 +488,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               ? (data.nossaVidaCrista as VidaCristaPart[])
               : (existingMidweek?.nossaVidaCrista || [])).map((part, pIdx) => ({
                 id: part.id || `v_${pIdx + 1}`,
-                title: cleanPartTitle(part.title || ''),
+                title: part.title || '',
                 durationMin: Number(part.durationMin) || 15,
                 speaker: part.speaker || '',
                 reader: part.reader || '',
@@ -645,9 +636,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           { id: 't2', title: isPt ? 'Joias Espirituais (10 min.)' : 'Buscemos Perlas Escondidas (10 min.)', durationMin: 10, speaker: gemsSpeaker, type: 'gems' },
           { id: 't3', title: isPt ? 'Leitura da Bíblia (4 min.)' : 'Lectura de la Biblia (4 min.)', durationMin: 4, speaker: readingMain, speakerSalaB: readingSalaB, type: 'reading' },
         ],
-        facaSeuMelhor: facaSeuMelhor.map(p => ({ ...p, title: cleanPartTitle(p.title) })),
+        facaSeuMelhor,
         middleSong,
-        nossaVidaCrista: nossaVidaCrista.map(p => ({ ...p, title: cleanPartTitle(p.title) })),
+        nossaVidaCrista,
         finalSong,
         finalPrayer,
       };

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Upload, Sparkles, X, Check, FileCode, AlertCircle, Camera, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
-import { extractTextFromFile, parseMeetingText, ParsedMeetingData, cleanPartTitle } from '../utils/fileImportParser';
-import { useModalBackHandler } from '../hooks/useModalBackHandler';
+import { extractTextFromFile, parseMeetingText, ParsedMeetingData } from '../utils/fileImportParser';
 import { 
   getStoredGeminiApiKey, 
   setStoredGeminiApiKey, 
@@ -26,9 +25,6 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
   onApplyParsedData,
   onApplyAllParsedWeeks,
 }) => {
-  // Handle mobile hardware back button to close modal
-  useModalBackHandler(isOpen, onClose);
-
   const [activeInputTab, setActiveInputTab] = useState<'image' | 'file' | 'text'>('image');
   const [selectedMeetingTarget, setSelectedMeetingTarget] = useState<'midweek' | 'weekend' | 'both'>(initialMeetingTarget);
 
@@ -120,13 +116,9 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
       gemsSpeaker: item.gemsSpeaker || undefined,
       readingMain: item.readingMain || undefined,
       readingSalaB: item.readingSalaB || undefined,
-      facaSeuMelhor: Array.isArray(item.facaSeuMelhor)
-        ? item.facaSeuMelhor.map((p: any) => ({ ...p, title: cleanPartTitle(p.title || '') }))
-        : [],
+      facaSeuMelhor: item.facaSeuMelhor || [],
       middleSong: item.middleSong || undefined,
-      nossaVidaCrista: Array.isArray(item.nossaVidaCrista)
-        ? item.nossaVidaCrista.map((p: any) => ({ ...p, title: cleanPartTitle(p.title || '') }))
-        : [],
+      nossaVidaCrista: item.nossaVidaCrista || [],
       finalSong: item.finalSong || undefined,
       finalPrayer: item.finalPrayer || undefined,
       publicTalkTitle: item.publicTalkTitle || undefined,

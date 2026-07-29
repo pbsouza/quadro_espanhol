@@ -86,8 +86,7 @@ Regras:
 1. Se houver MAIS DE UMA SEMANA, SEPARE CADA SEMANA EM UM ELEMENTO NO ARRAY "weeks"!
 2. Extraia nomes de irmãos, oradores, ajudantes, leitores, presidentes e cânticos para cada semana.
 3. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
-4. IMPORTANTE: Nos títulos das partes das seções "facaSeuMelhor" e "nossaVidaCrista", REMOVA QUALQUER NUMERAÇÃO no início do título (exemplo: extraia "Empiece conversaciones" em vez de "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
-5. Retorne APENAS o JSON puro.`;
+4. Retorne APENAS o JSON puro.`;
 
 export async function getAvailableModelsForKey(apiKey: string): Promise<string[]> {
   try {

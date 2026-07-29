@@ -18,7 +18,6 @@ import {
   subscribeGroups 
 } from './services/firestoreService';
 import { findCurrentWeekIndex } from './utils/weekUtils';
-import { useModalBackHandler } from './hooks/useModalBackHandler';
 
 import { HomePage } from './components/HomePage';
 import { MidweekMeetingPage } from './components/MidweekMeetingPage';
@@ -44,9 +43,6 @@ export default function App() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
-
-  // Intercept mobile hardware back button on subpages to return to home
-  useModalBackHandler(pageView !== 'home', () => setPageView('home'));
 
   // Subscribe to real-time Firestore collections with local cache fallback
   useEffect(() => {
