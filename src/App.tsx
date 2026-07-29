@@ -17,7 +17,8 @@ import {
   subscribeWitnessing, 
   subscribeGroups 
 } from './services/firestoreService';
-import { findCurrentWeekIndex } from './utils/weekUtils';
+import { findCurrentWeekIndex, filterPublicWeeks } from './utils/weekUtils';
+import { isExpired } from './utils/dateUtils';
 
 import { HomePage } from './components/HomePage';
 import { MidweekMeetingPage } from './components/MidweekMeetingPage';
@@ -181,8 +182,15 @@ export default function App() {
     };
   }, []);
 
-  const activeMidweekMeeting = midweekMeetings[currentWeekIndex] || midweekMeetings[0];
-  const activeWeekendMeeting = weekendMeetings[currentWeekIndex] || weekendMeetings[0];
+  // Filter lists for Public Area (3 weeks prior, current week, 6 weeks future)
+  const publicMidweekMeetings = filterPublicWeeks(midweekMeetings);
+  const publicWeekendMeetings = filterPublicWeeks(weekendMeetings);
+
+  // Filter out expired announcements for public pages
+  const publicAnnouncements = announcements.filter((ann) => !isExpired(ann.expirationDate));
+
+  const activeMidweekMeeting = publicMidweekMeetings[currentWeekIndex] || publicMidweekMeetings[0];
+  const activeWeekendMeeting = publicWeekendMeetings[currentWeekIndex] || publicWeekendMeetings[0];
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] selection:bg-[#E8F0E6] selection:text-[#1C4123]">
@@ -191,7 +199,7 @@ export default function App() {
           language={language}
           setLanguage={setLanguage}
           onNavigate={handleNavigate}
-          announcements={announcements}
+          announcements={publicAnnouncements}
           onOpenAdmin={() => handleNavigate('admin')}
         />
       )}
@@ -199,7 +207,7 @@ export default function App() {
       {pageView === 'midweek' && (
         <MidweekMeetingPage
           meeting={activeMidweekMeeting}
-          allMeetings={midweekMeetings}
+          allMeetings={publicMidweekMeetings}
           currentWeekIndex={currentWeekIndex}
           setWeekIndex={setCurrentWeekIndex}
           language={language}
@@ -213,7 +221,7 @@ export default function App() {
       {pageView === 'weekend' && (
         <WeekendMeetingPage
           meeting={activeWeekendMeeting}
-          allMeetings={weekendMeetings}
+          allMeetings={publicWeekendMeetings}
           currentWeekIndex={currentWeekIndex}
           setWeekIndex={setCurrentWeekIndex}
           language={language}
@@ -251,7 +259,7 @@ export default function App() {
 
       {pageView === 'announcements' && (
         <AnnouncementsPage
-          announcements={announcements}
+          announcements={publicAnnouncements}
           language={language}
           onNavigate={handleNavigate}
           onToggleMenu={() => handleToggleMenu(true)}

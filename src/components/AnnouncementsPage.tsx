@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Announcement, AppLanguage, PageView } from '../types';
-import { ArrowLeft, Menu, Megaphone, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Menu, Megaphone, Calendar, AlertCircle, Clock } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 
 interface AnnouncementsPageProps {
   announcements: Announcement[];
@@ -76,9 +77,17 @@ export const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({
                 {item.content}
               </p>
 
-              <div className="flex items-center gap-1 text-xs text-stone-400 pt-2 border-t border-stone-100">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>{t.publishedOn} {item.date}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 pt-2 border-t border-stone-100">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{t.publishedOn} {formatToDDMMYYYY(item.date)}</span>
+                </div>
+                {item.expirationDate && (
+                  <div className="flex items-center gap-1 text-amber-800 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-amber-700" />
+                    <span>{language === 'pt' ? 'Vence em:' : 'Vence el:'} {formatToDDMMYYYY(item.expirationDate)}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))

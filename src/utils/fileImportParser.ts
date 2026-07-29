@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { cleanPartTitle } from './textUtils';
 
 // Set PDF.js worker
 try {
@@ -313,7 +314,7 @@ export function parseMeetingText(text: string): ParsedMeetingData {
           if (partTitle.length > 2 && result.facaSeuMelhor) {
             result.facaSeuMelhor.push({
               id: `imported_m_${Date.now()}_${i}`,
-              title: partTitle,
+              title: cleanPartTitle(partTitle),
               durationMin: 4,
               assignedMain,
               assignedAssistant,
@@ -349,7 +350,7 @@ export function parseMeetingText(text: string): ParsedMeetingData {
           if (title.length > 2 && result.nossaVidaCrista) {
             result.nossaVidaCrista.push({
               id: `imported_v_${Date.now()}_${i}`,
-              title,
+              title: cleanPartTitle(title),
               durationMin: isBibleStudy ? 30 : 15,
               speaker,
               reader,

@@ -88,6 +88,39 @@ export function parseItemDate(item: any): Date | null {
 }
 
 /**
+ * Checks if an item falls within the public 10-weeks window:
+ * - 3 weeks prior (21 days before current Monday)
+ * - 1 current week
+ * - 6 future weeks (ending Sunday of the 6th future week)
+ */
+export function isItemInPublicWeeksWindow(item: any, refDate: Date = new Date()): boolean {
+  const date = parseItemDate(item);
+  if (!date) return true; // Keep items with unparseable dates to avoid accidental hiding
+
+  const currentMonday = getMondayOf(refDate);
+
+  // 3 weeks prior (21 days)
+  const minMonday = new Date(currentMonday);
+  minMonday.setDate(minMonday.getDate() - 21);
+  minMonday.setHours(0, 0, 0, 0);
+
+  // 6 future weeks + current week = 49 days minus 1 ms (Sunday of 6th future week)
+  const maxSunday = new Date(currentMonday);
+  maxSunday.setDate(maxSunday.getDate() + 48); // 48 days = Sunday of 6th future week
+  maxSunday.setHours(23, 59, 59, 999);
+
+  return date >= minMonday && date <= maxSunday;
+}
+
+/**
+ * Filters a list of meetings to ONLY keep items inside the public week window (3 past, current, 6 future)
+ */
+export function filterPublicWeeks<T>(items: T[], refDate: Date = new Date()): T[] {
+  if (!Array.isArray(items)) return [];
+  return items.filter((item) => isItemInPublicWeeksWindow(item, refDate));
+}
+
+/**
  * Checks if an item falls within the 21-weeks window (10 past, current, 10 future)
  */
 export function isItemIn21WeeksWindow(item: any, refDate: Date = new Date()): boolean {

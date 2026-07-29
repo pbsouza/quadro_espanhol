@@ -80,6 +80,7 @@ export interface Announcement {
   date: string;
   category: 'geral' | 'evento' | 'lembrete';
   important?: boolean;
+  expirationDate?: string;
 }
 
 export interface CleaningSchedule {

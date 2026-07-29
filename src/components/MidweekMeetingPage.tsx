@@ -4,6 +4,7 @@ import { Menu, BookOpen, User, Music, Gem, Wheat, AlertTriangle, ArrowLeft, Refr
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
 import { findCurrentWeekIndex } from '../utils/weekUtils';
+import { cleanPartTitle } from '../utils/textUtils';
 
 interface MidweekMeetingPageProps {
   meeting: MidweekMeeting | undefined;
@@ -297,7 +298,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
               return (
                 <div key={part.id || idx} className={idx > 0 ? 'pt-3' : ''}>
                   <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
-                    {itemNum}. {part.title}
+                    {itemNum}. {cleanPartTitle(part.title)}
                   </p>
 
                   <div className={`grid grid-cols-1 ${hasSalaB ? 'sm:grid-cols-2' : ''} gap-2 mt-2`}>
@@ -308,7 +309,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
                       <p className="text-sm text-stone-900">
                         <span className="font-medium">{part.assignedMain || '---'}</span>
                         {part.assignedAssistant && part.assignedAssistant.trim().length > 0 && (
-                          <span className="text-xs text-stone-600 block sm:inline sm:ml-1">
+                          <span className="text-sm text-stone-800 font-medium block sm:inline sm:ml-1">
                             ({t.assistant}: {part.assignedAssistant})
                           </span>
                         )}
@@ -323,7 +324,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
                         <p className="text-sm text-stone-900">
                           <span className="font-medium">{part.assignedSalaB || '---'}</span>
                           {part.assignedSalaBAssistant && part.assignedSalaBAssistant.trim().length > 0 && (
-                            <span className="text-xs text-stone-600 block sm:inline sm:ml-1">
+                            <span className="text-sm text-stone-800 font-medium block sm:inline sm:ml-1">
                               ({t.assistant}: {part.assignedSalaBAssistant})
                             </span>
                           )}
@@ -382,7 +383,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
             return (
               <div key={part.id || idx} className="pt-3">
                 <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
-                  {itemNum}. {part.title}
+                  {itemNum}. {cleanPartTitle(part.title)}
                 </p>
                 <div className="mt-1 pl-4 space-y-0.5">
                   <p className="text-sm text-stone-800">

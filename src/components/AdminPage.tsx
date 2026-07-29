@@ -27,6 +27,8 @@ import {
   clearAllDatabaseData
 } from '../services/firestoreService';
 import { getMondayOf, formatYYYYMMDD } from '../utils/weekUtils';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
+import { cleanPartTitle } from '../utils/textUtils';
 import { 
   Lock, 
   Unlock, 
@@ -515,7 +517,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               ? (data.facaSeuMelhor as MinisterioPart[])
               : (existingMidweek?.facaSeuMelhor || [])).map((part, pIdx) => ({
                 id: part.id || `f_${pIdx + 1}`,
-                title: part.title || '',
+                title: cleanPartTitle(part.title) || '',
                 durationMin: Number(part.durationMin) || 3,
                 assignedMain: part.assignedMain || '',
                 assignedAssistant: part.assignedAssistant || '',
@@ -528,7 +530,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               ? (data.nossaVidaCrista as VidaCristaPart[])
               : (existingMidweek?.nossaVidaCrista || [])).map((part, pIdx) => ({
                 id: part.id || `v_${pIdx + 1}`,
-                title: part.title || '',
+                title: cleanPartTitle(part.title) || '',
                 durationMin: Number(part.durationMin) || 15,
                 speaker: part.speaker || '',
                 reader: part.reader || '',
@@ -618,6 +620,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [annContent, setAnnContent] = useState('');
   const [annCategory, setAnnCategory] = useState<'geral' | 'evento' | 'lembrete'>('geral');
   const [annImportant, setAnnImportant] = useState(true);
+  const [annExpirationDate, setAnnExpirationDate] = useState('');
 
   // PIN settings
   const [newPin, setNewPin] = useState('');
@@ -733,10 +736,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         date: new Date().toISOString().split('T')[0],
         category: annCategory,
         important: annImportant,
+        expirationDate: annExpirationDate.trim() ? annExpirationDate.trim() : undefined,
       };
       await saveAnnouncement(newAnn);
       setAnnTitle('');
       setAnnContent('');
+      setAnnExpirationDate('');
       showNotification(isPt ? 'Anúncio publicado com sucesso!' : '¡Anuncio publicado!');
     } catch (err) {
       console.error(err);
@@ -2062,7 +2067,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <option value="lembrete">Lembrete Importante</option>
                 </select>
               </div>
-              <div className="flex items-center pt-5">
+              <div>
+                <label className="font-semibold block mb-1">Data de Vencimento (Opcional):</label>
+                <input
+                  type="date"
+                  value={annExpirationDate}
+                  onChange={(e) => setAnnExpirationDate(e.target.value)}
+                  className="w-full border rounded-xl p-2.5 bg-white"
+                />
+              </div>
+              <div className="flex items-center pt-2 sm:col-span-2">
                 <label className="flex items-center gap-2 cursor-pointer font-semibold text-stone-700">
                   <input
                     type="checkbox"
@@ -2091,11 +2105,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               {announcements.map((ann) => (
                 <div key={ann.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 flex items-start justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="bg-[#1C4123] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase">
                         {ann.category}
                       </span>
-                      <span className="text-xs text-stone-400 font-medium">{ann.date}</span>
+                      <span className="text-xs text-stone-500 font-medium">{formatToDDMMYYYY(ann.date)}</span>
+                      {ann.expirationDate && (
+                        <span className="text-xs text-amber-800 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                          Vence em: {formatToDDMMYYYY(ann.expirationDate)}
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-bold text-stone-900 text-sm">{ann.title}</h3>
                     <p className="text-xs text-stone-600 mt-1 whitespace-pre-line">{ann.content}</p>

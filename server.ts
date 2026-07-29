@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { cleanPartTitle, sanitizeParsedWeekTitles } from "./src/utils/textUtils";
 
 function getDefaultGeminiApiKey(): string {
   return Buffer.from('QVEuQWI4Uk42SWJhQUxWOXhPLVRHZHNUcVJPYURpT2hCWmhjT1I5cU44eUpQRkFzZWRJTGc=', 'base64').toString('utf-8');
@@ -65,7 +66,7 @@ Estrutura JSON obrigatória:
       "readingSalaB": string ou null,
       "facaSeuMelhor": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Empiece conversaciones' em vez de '4. Empiece conversaciones')",
           "durationMin": 4,
           "assignedMain": "nome do estudante ou designado",
           "assignedAssistant": "nome do ajudante se houver",
@@ -76,7 +77,7 @@ Estrutura JSON obrigatória:
       "middleSong": string ou null,
       "nossaVidaCrista": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Seamos adaptables' em vez de '7. Seamos adaptables')",
           "durationMin": 15,
           "speaker": "nome do orador/dirigente",
           "reader": "nome do leitor se houver",
@@ -102,9 +103,10 @@ Estrutura JSON obrigatória:
 Regras:
 1. Se houver MAIS DE UMA SEMANA na imagem, SEPARE CADA SEMANA EM UM OBJETO NO ARRAY "weeks".
 2. Identifique nomes de irmãos, títulos e minutos com clareza.
-3. Não invente nomes se não puder ler. Deixe em branco ou null.
-4. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
-5. Retorne APENAS o JSON puro.`;
+3. REMOVA QUALQUER NUMERAÇÃO DO INÍCIO DOS TÍTULOS DAS PARTES (ex: extraia "Empiece conversaciones" e NÃO "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
+4. Não invente nomes se não puder ler. Deixe em branco ou null.
+5. Se houver Cânticos, extraia o número ou título (ex: "Cântico 45").
+6. Retorne APENAS o JSON puro.`;
 
       const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let responseText = "{}";
@@ -142,9 +144,11 @@ Regras:
         throw lastErr;
       }
       const parsedJSON = JSON.parse(responseText);
-      const weeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
+      const rawWeeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
         ? parsedJSON.weeks
         : [parsedJSON];
+
+      const weeks = rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
 
       return res.json({ success: true, weeks, data: weeks[0] });
     } catch (error: any) {
@@ -203,7 +207,7 @@ Estrutura JSON obrigatória:
       "readingSalaB": string ou null,
       "facaSeuMelhor": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Empiece conversaciones' em vez de '4. Empiece conversaciones')",
           "durationMin": 4,
           "assignedMain": "nome do estudante ou designado",
           "assignedAssistant": "nome do ajudante se houver",
@@ -214,7 +218,7 @@ Estrutura JSON obrigatória:
       "middleSong": string ou null,
       "nossaVidaCrista": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Seamos adaptables' em vez de '7. Seamos adaptables')",
           "durationMin": 15,
           "speaker": "nome do orador/dirigente",
           "reader": "nome do leitor se houver",
@@ -240,8 +244,9 @@ Estrutura JSON obrigatória:
 Regras:
 1. Se houver MAIS DE UMA SEMANA no documento, SEPARE CADA SEMANA EM UM ELEMENTO NO ARRAY "weeks"!
 2. Extraia nomes de irmãos, oradores, ajudantes, leitores, presidentes e cânticos para cada semana.
-3. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
-4. Retorne APENAS o JSON puro.`;
+3. REMOVA QUALQUER NUMERAÇÃO DO INÍCIO DOS TÍTULOS DAS PARTES (ex: extraia "Empiece conversaciones" e NÃO "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
+4. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
+5. Retorne APENAS o JSON puro.`;
 
       const contentsParts: any[] = [];
 
@@ -289,9 +294,11 @@ Regras:
         throw lastErr;
       }
       const parsedJSON = JSON.parse(responseText);
-      const weeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
+      const rawWeeks = Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0
         ? parsedJSON.weeks
         : [parsedJSON];
+
+      const weeks = rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
 
       return res.json({ success: true, weeks, data: weeks[0] });
     } catch (error: any) {

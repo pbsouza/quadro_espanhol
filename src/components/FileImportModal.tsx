@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { FileText, Upload, Sparkles, X, Check, FileCode, AlertCircle, Camera, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
 import { extractTextFromFile, parseMeetingText, ParsedMeetingData } from '../utils/fileImportParser';
+import { cleanPartTitle } from '../utils/textUtils';
+import { optimizeImage } from '../utils/imageOptimizer';
 import { 
   getStoredGeminiApiKey, 
   setStoredGeminiApiKey, 
@@ -16,6 +18,8 @@ interface FileImportModalProps {
   onApplyParsedData: (data: ParsedMeetingData) => void;
   onApplyAllParsedWeeks?: (weeks: ParsedMeetingData[], targetType?: 'midweek' | 'weekend' | 'both') => void;
 }
+
+const MAX_PDF_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export const FileImportModal: React.FC<FileImportModalProps> = ({
   isOpen,
@@ -54,25 +58,41 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
   const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
+      const isPdf = selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf');
+      if (isPdf && selected.size > MAX_PDF_SIZE_BYTES) {
+        setErrorMsg(isPt ? 'O arquivo PDF excede o limite máximo de 5 MB.' : 'El archivo PDF supera el límite máximo de 5 MB.');
+        setDocFile(null);
+        e.target.value = '';
+        return;
+      }
       setDocFile(selected);
       setErrorMsg('');
       setParsedWeeks([]);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
-      setImageFile(selected);
+      setIsProcessing(true);
       setErrorMsg('');
       setParsedWeeks([]);
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(selected);
+      try {
+        const { file: optimizedFile, dataUrl } = await optimizeImage(selected, 1920, 1024 * 1024);
+        setImageFile(optimizedFile);
+        setImagePreview(dataUrl);
+      } catch (err) {
+        console.warn('Error optimizing image:', err);
+        setImageFile(selected);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(selected);
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -80,19 +100,35 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const dropped = e.dataTransfer.files[0];
       if (dropped.type.startsWith('image/')) {
         setActiveInputTab('image');
-        setImageFile(dropped);
+        setIsProcessing(true);
         setErrorMsg('');
         setParsedWeeks([]);
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result as string);
-        reader.readAsDataURL(dropped);
+
+        try {
+          const { file: optimizedFile, dataUrl } = await optimizeImage(dropped, 1920, 1024 * 1024);
+          setImageFile(optimizedFile);
+          setImagePreview(dataUrl);
+        } catch (err) {
+          setImageFile(dropped);
+          const reader = new FileReader();
+          reader.onloadend = () => setImagePreview(reader.result as string);
+          reader.readAsDataURL(dropped);
+        } finally {
+          setIsProcessing(false);
+        }
       } else {
+        const isPdf = dropped.type === 'application/pdf' || dropped.name.toLowerCase().endsWith('.pdf');
+        if (isPdf && dropped.size > MAX_PDF_SIZE_BYTES) {
+          setErrorMsg(isPt ? 'O arquivo PDF excede o limite máximo de 5 MB.' : 'El archivo PDF supera el límite máximo de 5 MB.');
+          setDocFile(null);
+          return;
+        }
         setActiveInputTab('file');
         setDocFile(dropped);
         setErrorMsg('');
@@ -927,7 +963,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
                     <ul className="list-disc list-inside space-y-1 text-stone-700">
                       {activeParsed.facaSeuMelhor.map((p, idx) => (
                         <li key={idx}>
-                          <span className="font-semibold">{p.title}:</span>{' '}
+                          <span className="font-semibold">{cleanPartTitle(p.title)}:</span>{' '}
                           {p.assignedMain || 'Pendente'}
                           {p.assignedAssistant ? ` / Ajudante: ${p.assignedAssistant}` : ''}
                         </li>
@@ -944,7 +980,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
                     <ul className="list-disc list-inside space-y-1 text-stone-700">
                       {activeParsed.nossaVidaCrista.map((p, idx) => (
                         <li key={idx}>
-                          <span className="font-semibold">{p.title}:</span>{' '}
+                          <span className="font-semibold">{cleanPartTitle(p.title)}:</span>{' '}
                           {p.speaker || 'Pendente'}
                           {p.reader ? ` / Leitor: ${p.reader}` : ''}
                         </li>

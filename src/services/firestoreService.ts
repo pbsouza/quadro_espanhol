@@ -34,7 +34,7 @@ const CLEANING_COL = 'cleaning_schedule';
 const WITNESSING_COL = 'public_witnessing';
 const GROUPS_COL = 'groups';
 
-// Subscribe to Midweek Meetings (10 past weeks, current week, 10 future weeks)
+// Subscribe to Midweek Meetings (All weeks from database)
 export function subscribeMidweekMeetings(
   onUpdate: (data: MidweekMeeting[]) => void,
   onError?: (err: Error) => void
@@ -42,7 +42,7 @@ export function subscribeMidweekMeetings(
   // 1. Instantly deliver cached data from LocalStorage if available
   const cached = cacheService.getMidweek<MidweekMeeting>();
   if (cached && Array.isArray(cached)) {
-    const filteredCached = sortMeetingsChronologically(filterMeetingsBy21Weeks(cached));
+    const filteredCached = sortMeetingsChronologically(cached);
     onUpdate(filteredCached);
   } else {
     onUpdate([]);
@@ -64,37 +64,36 @@ export function subscribeMidweekMeetings(
             rawList.push({ id: doc.id, ...doc.data() } as MidweekMeeting);
           });
 
-          // Filter strictly for 21-weeks window (10 past, 1 current, 10 future)
-          const windowedList = sortMeetingsChronologically(filterMeetingsBy21Weeks(rawList));
+          const sortedList = sortMeetingsChronologically(rawList);
           
           // Save locally to cache
-          cacheService.setMidweek(windowedList);
-          onUpdate(windowedList);
+          cacheService.setMidweek(sortedList);
+          onUpdate(sortedList);
         }
       },
       (error) => {
         console.warn('Firestore subscription error (midweek):', error);
         if (onError) onError(error);
         const fallback = cacheService.getMidweek<MidweekMeeting>() || [];
-        onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
+        onUpdate(sortMeetingsChronologically(fallback));
       }
     );
   } catch (err) {
     console.warn('Error connecting to firestore midweek:', err);
     if (onError && err instanceof Error) onError(err);
     const fallback = cacheService.getMidweek<MidweekMeeting>() || [];
-    onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
+    onUpdate(sortMeetingsChronologically(fallback));
     return () => {};
   }
 }
 
-// Subscribe to Weekend Meetings (10 past weeks, current week, 10 future weeks)
+// Subscribe to Weekend Meetings (All weeks from database)
 export function subscribeWeekendMeetings(
   onUpdate: (data: WeekendMeeting[]) => void
 ) {
   const cached = cacheService.getWeekend<WeekendMeeting>();
   if (cached && Array.isArray(cached)) {
-    onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(cached)));
+    onUpdate(sortMeetingsChronologically(cached));
   } else {
     onUpdate([]);
   }
@@ -114,19 +113,19 @@ export function subscribeWeekendMeetings(
           snapshot.forEach((doc) => {
             rawList.push({ id: doc.id, ...doc.data() } as WeekendMeeting);
           });
-          const windowedList = sortMeetingsChronologically(filterMeetingsBy21Weeks(rawList));
-          cacheService.setWeekend(windowedList);
-          onUpdate(windowedList);
+          const sortedList = sortMeetingsChronologically(rawList);
+          cacheService.setWeekend(sortedList);
+          onUpdate(sortedList);
         }
       },
       () => {
         const fallback = cacheService.getWeekend<WeekendMeeting>() || [];
-        onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
+        onUpdate(sortMeetingsChronologically(fallback));
       }
     );
   } catch {
     const fallback = cacheService.getWeekend<WeekendMeeting>() || [];
-    onUpdate(sortMeetingsChronologically(filterMeetingsBy21Weeks(fallback)));
+    onUpdate(sortMeetingsChronologically(fallback));
     return () => {};
   }
 }
@@ -317,7 +316,7 @@ export async function saveMidweekMeeting(meeting: MidweekMeeting): Promise<void>
   } else {
     updated.push(cleanMeeting);
   }
-  updated = sortMeetingsChronologically(filterMeetingsBy21Weeks(updated));
+  updated = sortMeetingsChronologically(updated);
   cacheService.setMidweek(updated);
 
   if (db) {
@@ -353,7 +352,7 @@ export async function saveWeekendMeeting(meeting: WeekendMeeting): Promise<void>
   } else {
     updated.push(cleanMeeting);
   }
-  updated = sortMeetingsChronologically(filterMeetingsBy21Weeks(updated));
+  updated = sortMeetingsChronologically(updated);
   cacheService.setWeekend(updated);
 
   if (db) {

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { sanitizeParsedWeekTitles } from '../utils/textUtils';
 
 const GEMINI_KEY_STORAGE_KEY = 'gemini_api_key';
 
@@ -48,7 +49,7 @@ Estrutura JSON obrigatória:
       "readingSalaB": string ou null,
       "facaSeuMelhor": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Empiece conversaciones' em vez de '4. Empiece conversaciones')",
           "durationMin": 4,
           "assignedMain": "nome do estudante ou designado",
           "assignedAssistant": "nome do ajudante se houver",
@@ -59,7 +60,7 @@ Estrutura JSON obrigatória:
       "middleSong": string ou null,
       "nossaVidaCrista": [
         {
-          "title": "título da parte",
+          "title": "título da parte (ATENÇÃO: NUNCA inclua o número da parte no início. Extraia apenas 'Seamos adaptables' em vez de '7. Seamos adaptables')",
           "durationMin": 15,
           "speaker": "nome do orador/dirigente",
           "reader": "nome do leitor se houver",
@@ -85,8 +86,9 @@ Estrutura JSON obrigatória:
 Regras:
 1. Se houver MAIS DE UMA SEMANA, SEPARE CADA SEMANA EM UM ELEMENTO NO ARRAY "weeks"!
 2. Extraia nomes de irmãos, oradores, ajudantes, leitores, presidentes e cânticos para cada semana.
-3. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
-4. Retorne APENAS o JSON puro.`;
+3. REMOVA QUALQUER NUMERAÇÃO DO INÍCIO DOS TÍTULOS DAS PARTES (ex: extraia "Empiece conversaciones" e NÃO "4. Empiece conversaciones" ou "4. 4. Empiece conversaciones").
+4. Se houver Cânticos, formate como "Cântico X" (ex: "Cântico 45").
+5. Retorne APENAS o JSON puro.`;
 
 export async function getAvailableModelsForKey(apiKey: string): Promise<string[]> {
   try {
@@ -168,10 +170,10 @@ export async function parseImageWithClientGemini(
       const resData = await res.json();
       const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
-      if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
-        return parsedJSON.weeks;
-      }
-      return [parsedJSON];
+      const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
+        ? parsedJSON.weeks
+        : [parsedJSON];
+      return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
     } catch (err: any) {
       console.warn(`Model ${modelName} error:`, err);
       lastErrorMsg = err?.message || String(err);
@@ -233,10 +235,10 @@ export async function parseDocWithClientGemini(
       const resData = await res.json();
       const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
-      if (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0) {
-        return parsedJSON.weeks;
-      }
-      return [parsedJSON];
+      const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
+        ? parsedJSON.weeks
+        : [parsedJSON];
+      return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
     } catch (err: any) {
       console.warn(`Model ${modelName} error:`, err);
       lastErrorMsg = err?.message || String(err);
