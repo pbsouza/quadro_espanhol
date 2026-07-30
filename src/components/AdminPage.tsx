@@ -29,7 +29,7 @@ import {
   clearAllDatabaseData,
   saveCardImages
 } from '../services/firestoreService';
-import { getMondayOf, formatYYYYMMDD } from '../utils/weekUtils';
+import { getMondayOf, formatYYYYMMDD, parseItemDate } from '../utils/weekUtils';
 import { formatToDDMMYYYY } from '../utils/dateUtils';
 import { cleanPartTitle } from '../utils/textUtils';
 import { optimizeImage } from '../utils/imageOptimizer';
@@ -508,14 +508,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         const extractNums = (str?: string) => (str ? (str.match(/\d+/g) || []).map(Number) : []);
         const dataNums = extractNums(data.weekLabel);
 
-        const baseMonday = getMondayOf(new Date());
-        baseMonday.setDate(baseMonday.getDate() + (i * 7));
-        const calculatedWeekDate = formatYYYYMMDD(baseMonday);
+        // Resolve weekDate (YYYY-MM-DD)
+        let resolvedWeekDate = data.weekDate;
+        if (!resolvedWeekDate) {
+          const parsed = parseItemDate({ weekLabel: data.weekLabel, weekId: data.weekLabel });
+          if (parsed) {
+            resolvedWeekDate = formatYYYYMMDD(getMondayOf(parsed));
+          }
+        }
+        if (!resolvedWeekDate) {
+          const baseMonday = getMondayOf(new Date());
+          baseMonday.setDate(baseMonday.getDate() + (i * 7));
+          resolvedWeekDate = formatYYYYMMDD(baseMonday);
+        }
 
         // 1. Process Midweek ONLY if targeted
         if (isMidweekTarget) {
           let existingMidweek = allMidweekList.find(m => {
             if (usedMidweekIds.has(m.id)) return false;
+            if (m.weekId === resolvedWeekDate) return true;
             if (data.weekDate && m.weekId === data.weekDate) return true;
             const mNums = extractNums(m.weekLabel);
             if (dataNums.length >= 2 && mNums.length >= 2) {
@@ -524,11 +535,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             return false;
           });
 
-          if (!existingMidweek && allMidweekList[i] && !usedMidweekIds.has(allMidweekList[i].id)) {
-            existingMidweek = allMidweekList[i];
-          }
-
-          const weekId = existingMidweek?.weekId || data.weekDate || calculatedWeekDate;
+          const weekId = existingMidweek?.weekId || resolvedWeekDate;
           const midweekId = existingMidweek?.id || `midweek_${weekId}`;
           const rawWeekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
           const weekLabel = formatToDDMMYYYY(rawWeekLabel);
@@ -589,6 +596,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         if (isWeekendTarget) {
           let existingWeekend = allWeekendList.find(w => {
             if (usedWeekendIds.has(w.id)) return false;
+            if (w.weekId === resolvedWeekDate) return true;
             if (data.weekDate && w.weekId === data.weekDate) return true;
             const wNums = extractNums(w.weekLabel);
             if (dataNums.length >= 2 && wNums.length >= 2) {
@@ -597,11 +605,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             return false;
           });
 
-          if (!existingWeekend && allWeekendList[i] && !usedWeekendIds.has(allWeekendList[i].id)) {
-            existingWeekend = allWeekendList[i];
-          }
-
-          const weekId = existingWeekend?.weekId || data.weekDate || calculatedWeekDate;
+          const weekId = existingWeekend?.weekId || resolvedWeekDate;
           const weekendId = existingWeekend?.id || `weekend_${weekId}`;
           const rawWeekLabel = data.weekLabel || existingWeekend?.weekLabel || `Semana ${i + 1}`;
           const weekLabel = formatToDDMMYYYY(rawWeekLabel);
@@ -1518,7 +1522,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 className="flex-1 md:flex-none bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold text-xs text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1C4123] cursor-pointer"
               >
                 {allMidweekList.map((m, idx) => (
-                  <option key={m.id || idx} value={idx}>
+                  <option key={m.id ? `mw_${m.id}_${idx}` : `mw_${idx}`} value={idx}>
                     📅 {formatToDDMMYYYY(m.weekLabel)} {idx === 0 ? `(${isPt ? 'Semana Atual' : 'Semana Actual'})` : ''}
                   </option>
                 ))}
@@ -1696,7 +1700,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
 
             {facaSeuMelhor.map((part, idx) => (
-              <div key={part.id} className="bg-white p-3 rounded-xl border border-amber-200 space-y-2 text-xs">
+              <div key={part.id ? `faca_${part.id}_${idx}` : `faca_${idx}`} className="bg-white p-3 rounded-xl border border-amber-200 space-y-2 text-xs">
                 <div className="flex justify-between items-center font-bold text-amber-900">
                   <span>{isPt ? `Parte #${4 + idx}` : `Intervención #${4 + idx}`}</span>
                   <button
@@ -1826,7 +1830,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
 
             {nossaVidaCrista.map((part, idx) => (
-              <div key={part.id} className="bg-white p-3 rounded-xl border border-red-200 space-y-2 text-xs">
+              <div key={part.id ? `vida_${part.id}_${idx}` : `vida_${idx}`} className="bg-white p-3 rounded-xl border border-red-200 space-y-2 text-xs">
                 <div className="flex justify-between items-center font-bold text-red-900">
                   <span>Parte #{4 + facaSeuMelhor.length + idx}</span>
                   <button
@@ -1948,7 +1952,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 className="flex-1 md:flex-none bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold text-xs text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1C4123] cursor-pointer"
               >
                 {allWeekendList.map((m, idx) => (
-                  <option key={m.id || idx} value={idx}>
+                  <option key={m.id ? `wk_${m.id}_${idx}` : `wk_${idx}`} value={idx}>
                     📅 {formatToDDMMYYYY(m.weekLabel)} {idx === 0 ? `(${isPt ? 'Data Atual' : 'Fecha Actual'})` : ''}
                   </option>
                 ))}
@@ -2215,7 +2219,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <p className="font-bold mb-1 text-stone-800">Tarefas Programadas:</p>
                   <ul className="list-disc pl-4 space-y-0.5 text-stone-600">
                     {item.tasks.map((task, tIdx) => (
-                      <li key={tIdx}>{task}</li>
+                      <li key={`task_${item.id}_${tIdx}`}>{task}</li>
                     ))}
                   </ul>
                 </div>
@@ -2320,7 +2324,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   {group.members && group.members.length > 0 ? (
                     <ul className="mt-1 space-y-1 text-stone-700 pl-1">
                       {group.members.map((m, idx) => (
-                        <li key={idx} className="flex items-center gap-1.5 text-xs font-medium">
+                        <li key={`mem_${group.id}_${idx}`} className="flex items-center gap-1.5 text-xs font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#1C4123] shrink-0"></span>
                           <span>{m}</span>
                         </li>

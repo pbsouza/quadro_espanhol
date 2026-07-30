@@ -89,7 +89,7 @@ export const CleaningPage: React.FC<CleaningPageProps> = ({
                 </p>
                 <ul className="mt-2 space-y-1.5">
                   {item.tasks.map((task, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-xs text-stone-800">
+                    <li key={`clean_task_${item.id}_${idx}`} className="flex items-center gap-2 text-xs text-stone-800">
                       <CheckCircle2 className="w-4 h-4 text-[#1C4123] shrink-0" />
                       <span>{task}</span>
                     </li>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   AppLanguage, 
   PageView, 
@@ -20,7 +20,7 @@ import {
   subscribeGroups,
   subscribeCardImages
 } from './services/firestoreService';
-import { findCurrentWeekIndex, filterPublicWeeks } from './utils/weekUtils';
+import { findCurrentWeekIndex, filterPublicWeeks, sortMeetingsChronologically } from './utils/weekUtils';
 import { isExpired } from './utils/dateUtils';
 
 import { HomePage } from './components/HomePage';
@@ -153,19 +153,10 @@ export default function App() {
 
   // Subscribe to real-time Firestore collections with local cache fallback
   useEffect(() => {
-    let hasSetInitialWeek = false;
-
     const unsubMidweek = subscribeMidweekMeetings(
       (data) => {
         setMidweekMeetings(data);
         setConnectionError(false);
-
-        // Position on current week automatically when data arrives
-        if (!hasSetInitialWeek && data.length > 0) {
-          const currentIdx = findCurrentWeekIndex(data);
-          setCurrentWeekIndex(currentIdx);
-          hasSetInitialWeek = true;
-        }
       },
       () => setConnectionError(true)
     );
@@ -188,9 +179,25 @@ export default function App() {
     };
   }, []);
 
-  // Filter lists for Public Area (3 weeks prior, current week, 6 weeks future)
-  const publicMidweekMeetings = filterPublicWeeks(midweekMeetings);
-  const publicWeekendMeetings = filterPublicWeeks(weekendMeetings);
+  // Filter & sort lists for Public Area (3 weeks prior, current week, 6 weeks future)
+  const publicMidweekMeetings = useMemo(
+    () => sortMeetingsChronologically(filterPublicWeeks(midweekMeetings)),
+    [midweekMeetings]
+  );
+  const publicWeekendMeetings = useMemo(
+    () => sortMeetingsChronologically(filterPublicWeeks(weekendMeetings)),
+    [weekendMeetings]
+  );
+
+  // Position on current week automatically when public list is loaded
+  const hasSetInitialWeekRef = useRef(false);
+  useEffect(() => {
+    if (!hasSetInitialWeekRef.current && publicMidweekMeetings.length > 0) {
+      const currentIdx = findCurrentWeekIndex(publicMidweekMeetings);
+      setCurrentWeekIndex(currentIdx);
+      hasSetInitialWeekRef.current = true;
+    }
+  }, [publicMidweekMeetings]);
 
   // Filter out expired announcements for public pages
   const publicAnnouncements = announcements.filter((ann) => !isExpired(ann.expirationDate));

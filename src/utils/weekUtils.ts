@@ -58,20 +58,32 @@ export function get21WeeksWindow(refDate: Date = new Date()): WeekWindow21 {
 }
 
 /**
- * Helper to parse a Date object from a item's weekId, date, or id string
+ * Helper to parse a Date object from an item's weekId, date, id, or weekLabel string
  */
 export function parseItemDate(item: any): Date | null {
   if (!item) return null;
-  const str = item.weekId || item.date || item.id;
+  const str = item.weekId || item.date || item.id || item.weekLabel;
   if (!str || typeof str !== 'string') return null;
 
   // Extract YYYY-MM-DD pattern if present
-  const match = str.match(/\d{4}-\d{2}-\d{2}/);
-  if (match) {
-    const parts = match[0].split('-');
+  const matchIso = str.match(/\d{4}-\d{2}-\d{2}/);
+  if (matchIso) {
+    const parts = matchIso[0].split('-');
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1;
     const day = parseInt(parts[2], 10);
+    const parsed = new Date(year, month, day);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  // Extract DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY pattern if present
+  const matchDdMmYyyy = str.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})/);
+  if (matchDdMmYyyy) {
+    const day = parseInt(matchDdMmYyyy[1], 10);
+    const month = parseInt(matchDdMmYyyy[2], 10) - 1;
+    const year = parseInt(matchDdMmYyyy[3], 10);
     const parsed = new Date(year, month, day);
     if (!isNaN(parsed.getTime())) {
       return parsed;
