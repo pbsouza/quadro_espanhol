@@ -11,7 +11,10 @@ import {
   MinisterioPart,
   VidaCristaPart,
   CardImages,
-  DEFAULT_CARD_IMAGES
+  DEFAULT_CARD_IMAGES,
+  AdminSection,
+  UserAccount,
+  UserAuthSession
 } from '../types';
 import { 
   saveMidweekMeeting, 
@@ -27,7 +30,9 @@ import {
   saveGroup,
   deleteGroup,
   clearAllDatabaseData,
-  saveCardImages
+  saveCardImages,
+  subscribeUserAccounts,
+  saveUserAccounts
 } from '../services/firestoreService';
 import { getMondayOf, formatYYYYMMDD, parseItemDate } from '../utils/weekUtils';
 import { formatToDDMMYYYY } from '../utils/dateUtils';
@@ -61,7 +66,12 @@ import {
   Languages,
   Upload,
   Image as ImageIcon,
-  RotateCcw
+  RotateCcw,
+  UserPlus,
+  UserCheck,
+  CheckSquare,
+  Square,
+  Shield
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { FileImportModal } from './FileImportModal';
@@ -231,15 +241,54 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [newWitnessingTime, setNewWitnessingTime] = useState('09:00 - 11:00');
   const [newWitnessingPublishers, setNewWitnessingPublishers] = useState('');
 
-  // Login Authentication State
+  // User Accounts & Authentication State
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>([]);
   const storedPin = localStorage.getItem('admin_pin') || '1234';
+
+  const [authSession, setAuthSession] = useState<UserAuthSession>(() => {
+    const saved = sessionStorage.getItem('admin_session_info') || localStorage.getItem('admin_session_info');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    const isMasterAuth = sessionStorage.getItem('admin_auth') === 'true' || localStorage.getItem('admin_auth') === 'true';
+    if (isMasterAuth) {
+      return {
+        isMaster: true,
+        userName: 'Administrador (Master)',
+        allowedSections: ['midweek', 'weekend', 'announcements', 'cleaning', 'witnessing', 'groups', 'dictionary', 'settings']
+      };
+    }
+    return {
+      isMaster: false,
+      allowedSections: []
+    };
+  });
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    sessionStorage.getItem('admin_auth') === 'true'
+    sessionStorage.getItem('admin_auth') === 'true' || localStorage.getItem('admin_auth') === 'true'
   );
   const [pinInput, setPinInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Limited User Management Modal State
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userNameInput, setUserNameInput] = useState('');
+  const [userPinInput, setUserPinInput] = useState('');
+  const [userAllowedSections, setUserAllowedSections] = useState<AdminSection[]>(['midweek']);
+  const [showUserPins, setShowUserPins] = useState<Record<string, boolean>>({});
+
+  // Subscribe to User Accounts
+  useEffect(() => {
+    const unsub = subscribeUserAccounts((users) => {
+      setUserAccounts(users);
+    });
+    return () => unsub();
+  }, []);
 
   // Management Tab State
   const [activeTab, setActiveTab] = useState<
@@ -738,21 +787,178 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Handle Login submission
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === storedPin || pinInput === 'admin' || pinInput === '1234') {
+    const cleanPin = pinInput.trim();
+
+    // 1. Check Master PIN
+    if (cleanPin === storedPin || cleanPin === 'admin' || cleanPin === '1234') {
+      const masterSession: UserAuthSession = {
+        isMaster: true,
+        userName: 'Administrador (Master)',
+        allowedSections: ['midweek', 'weekend', 'announcements', 'cleaning', 'witnessing', 'groups', 'dictionary', 'settings']
+      };
       setIsAuthenticated(true);
+      setAuthSession(masterSession);
       setLoginError('');
+
+      const sessionJson = JSON.stringify(masterSession);
+      sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_session_info', sessionJson);
       if (rememberMe) {
-        sessionStorage.setItem('admin_auth', 'true');
+        localStorage.setItem('admin_auth', 'true');
+        localStorage.setItem('admin_session_info', sessionJson);
       }
-    } else {
-      setLoginError(isPt ? 'Senha / PIN incorreto. Tente novamente.' : 'PIN incorrecto. Inténtelo de nuevo.');
+      return;
     }
+
+    // 2. Check Limited Access Users
+    const matchedUser = userAccounts.find(u => u.pin === cleanPin);
+    if (matchedUser) {
+      const allowed = matchedUser.allowedSections && matchedUser.allowedSections.length > 0 
+        ? matchedUser.allowedSections 
+        : (['midweek'] as AdminSection[]);
+
+      const userSession: UserAuthSession = {
+        isMaster: false,
+        user: matchedUser,
+        userName: matchedUser.name,
+        allowedSections: allowed
+      };
+
+      setIsAuthenticated(true);
+      setAuthSession(userSession);
+      setLoginError('');
+
+      if (!allowed.includes(activeTab as AdminSection)) {
+        setActiveTab(allowed[0]);
+      }
+
+      const sessionJson = JSON.stringify(userSession);
+      sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_session_info', sessionJson);
+      if (rememberMe) {
+        localStorage.setItem('admin_auth', 'true');
+        localStorage.setItem('admin_session_info', sessionJson);
+      }
+      return;
+    }
+
+    setLoginError(isPt ? 'Senha / PIN incorreto. Tente novamente.' : 'PIN incorrecto. Inténtelo de nuevo.');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_session_info');
+    localStorage.removeItem('admin_auth');
+    localStorage.removeItem('admin_session_info');
+    setAuthSession({ isMaster: false, allowedSections: [] });
     setPinInput('');
+  };
+
+  // Limited User Management Handlers (Master Only)
+  const handleOpenAddUser = () => {
+    setEditingUserId(null);
+    setUserNameInput('');
+    setUserPinInput('');
+    setUserAllowedSections(['midweek']);
+    setShowUserModal(true);
+  };
+
+  const handleOpenEditUser = (user: UserAccount) => {
+    setEditingUserId(user.id);
+    setUserNameInput(user.name);
+    setUserPinInput(user.pin);
+    setUserAllowedSections(user.allowedSections || ['midweek']);
+    setShowUserModal(true);
+  };
+
+  const handleSaveUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userNameInput.trim()) {
+      alert(isPt ? 'Digite o nome ou descrição do usuário.' : 'Ingrese el nombre del usuario.');
+      return;
+    }
+    if (!userPinInput.trim() || userPinInput.trim().length < 4) {
+      alert(isPt ? 'O PIN/Senha deve ter pelo menos 4 caracteres.' : 'El PIN debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (userAllowedSections.length === 0) {
+      alert(isPt ? 'Selecione pelo menos uma permissão de acesso.' : 'Seleccione al menos un permiso de acceso.');
+      return;
+    }
+
+    const cleanPin = userPinInput.trim();
+    if (cleanPin === storedPin || cleanPin === 'admin' || cleanPin === '1234') {
+      alert(isPt ? 'Esta senha é reservada para o Administrador Master. Escolha outra.' : 'Esta contraseña está reservada para el Administrador Master.');
+      return;
+    }
+
+    const exists = userAccounts.find(u => u.pin === cleanPin && u.id !== editingUserId);
+    if (exists) {
+      alert(isPt ? 'Já existe outro usuário cadastrado com esta senha/PIN.' : 'Ya existe otro usuario con este PIN.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let updatedList: UserAccount[];
+      if (editingUserId) {
+        updatedList = userAccounts.map(u => 
+          u.id === editingUserId 
+            ? { ...u, name: userNameInput.trim(), pin: cleanPin, allowedSections: userAllowedSections }
+            : u
+        );
+      } else {
+        const newUser: UserAccount = {
+          id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: userNameInput.trim(),
+          pin: cleanPin,
+          allowedSections: userAllowedSections,
+          createdAt: new Date().toISOString()
+        };
+        updatedList = [...userAccounts, newUser];
+      }
+
+      await saveUserAccounts(updatedList);
+      setUserAccounts(updatedList);
+      setShowUserModal(false);
+      showNotification(isPt ? 'Usuário salvo com sucesso!' : '¡Usuario guardado con éxito!');
+    } catch (err) {
+      console.error('Error saving user account:', err);
+      alert(isPt ? 'Erro ao salvar usuário.' : 'Error al guardar usuario.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteUserAccount = (id: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: isPt ? 'Excluir Usuário' : 'Eliminar Usuario',
+      message: isPt ? `Deseja excluir o acesso do usuário "${name}"?` : `¿Eliminar al usuario "${name}"?`,
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          const updated = userAccounts.filter(u => u.id !== id);
+          await saveUserAccounts(updated);
+          setUserAccounts(updated);
+          showNotification(isPt ? 'Acesso do usuário removido.' : 'Acceso eliminado.');
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setSaving(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  const toggleSectionPermission = (sec: AdminSection) => {
+    if (userAllowedSections.includes(sec)) {
+      setUserAllowedSections(userAllowedSections.filter(s => s !== sec));
+    } else {
+      setUserAllowedSections([...userAllowedSections, sec]);
+    }
   };
 
   const handleSavePin = (e: React.FormEvent) => {
@@ -1373,14 +1579,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-extrabold text-[#1C4123]">
                 {isPt ? 'Painel de Gestão e Edição' : 'Panel de Gestión y Edición'}
               </h1>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                <span>{isPt ? 'Autenticado' : 'Autenticado'}</span>
-              </span>
+              {authSession.isMaster ? (
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-300 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isPt ? 'Admin Master' : 'Admin Master'}</span>
+                </span>
+              ) : (
+                <span className="bg-amber-100 text-amber-900 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 border border-amber-300 shadow-xs">
+                  <UserCheck className="w-3.5 h-3.5 text-amber-700" />
+                  <span>
+                    {authSession.userName || (isPt ? 'Acesso Limitado' : 'Acceso Limitado')} ({authSession.allowedSections.length} {isPt ? 'seção/seções' : 'sección/secciones'})
+                  </span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-stone-500">
               {isPt
@@ -1443,103 +1658,119 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* Navigation Tabs Bar */}
+      {/* Navigation Tabs Bar - Filtered by Permissions */}
       <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none border-b border-stone-200">
-        <button
-          onClick={() => setActiveTab('midweek')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'midweek'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>{isPt ? 'Meio de Semana' : 'Entre Semana'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('midweek')) && (
+          <button
+            onClick={() => setActiveTab('midweek')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'midweek'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>{isPt ? 'Meio de Semana' : 'Entre Semana'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('weekend')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'weekend'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          <span>{isPt ? 'Fim de Semana' : 'Fin de Semana'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('weekend')) && (
+          <button
+            onClick={() => setActiveTab('weekend')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'weekend'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>{isPt ? 'Fim de Semana' : 'Fin de Semana'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('announcements')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'announcements'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Megaphone className="w-4 h-4" />
-          <span>{isPt ? 'Anúncios' : 'Anuncios'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('announcements')) && (
+          <button
+            onClick={() => setActiveTab('announcements')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'announcements'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            <span>{isPt ? 'Anúncios' : 'Anuncios'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('cleaning')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'cleaning'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>{isPt ? 'Limpeza' : 'Limpieza'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('cleaning')) && (
+          <button
+            onClick={() => setActiveTab('cleaning')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'cleaning'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{isPt ? 'Limpeza' : 'Limpieza'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('witnessing')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'witnessing'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <MapPin className="w-4 h-4" />
-          <span>{isPt ? 'Testemunho' : 'Predicación'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('witnessing')) && (
+          <button
+            onClick={() => setActiveTab('witnessing')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'witnessing'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>{isPt ? 'Testemunho' : 'Predicación'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('groups')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'groups'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>{isPt ? 'Grupos' : 'Grupos'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('groups')) && (
+          <button
+            onClick={() => setActiveTab('groups')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'groups'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>{isPt ? 'Grupos' : 'Grupos'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'settings'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>{isPt ? 'Configurações' : 'Ajustes'}</span>
-        </button>
+        {(authSession.isMaster || authSession.allowedSections.includes('dictionary')) && (
+          <button
+            onClick={() => setActiveTab('dictionary')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'dictionary'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            <span>{isPt ? 'Dicionário' : 'Diccionario'}</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('dictionary')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
-            activeTab === 'dictionary'
-              ? 'bg-[#1C4123] text-white shadow-sm'
-              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-          }`}
-        >
-          <Globe className="w-4 h-4" />
-          <span>{isPt ? 'Dicionário' : 'Diccionario'}</span>
-        </button>
+        {authSession.isMaster && (
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+              activeTab === 'settings'
+                ? 'bg-[#1C4123] text-white shadow-sm'
+                : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>{isPt ? 'Configurações' : 'Ajustes'}</span>
+          </button>
+        )}
       </div>
 
       {/* TAB 1: REUNIÃO MEIO DE SEMANA */}
@@ -2630,29 +2861,148 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
           </div>
 
-          {/* Change PIN Form */}
+          {/* User Account Permissions Management Section (Master Only) */}
+          <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4 max-w-3xl text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+              <div>
+                <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#1C4123]" />
+                  <span>{isPt ? 'Usuários e Permissões de Acesso' : 'Usuarios y Permisos de Acceso'}</span>
+                </h3>
+                <p className="text-stone-600 mt-1">
+                  {isPt
+                    ? 'Crie senhas/PINs individuais e defina quais seções do quadro cada usuário pode acessar e editar (1, 2 ou mais itens).'
+                    : 'Cree contraseñas/PINs individuales y defina qué secciones del cuadro puede editar cada usuario.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddUser}
+                className="flex items-center gap-1.5 bg-[#1C4123] hover:bg-[#285A31] text-white font-bold px-3.5 py-2 rounded-xl transition cursor-pointer text-xs shrink-0 self-start sm:self-auto shadow-xs"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{isPt ? 'Adicionar Usuário' : 'Agregar Usuario'}</span>
+              </button>
+            </div>
+
+            {/* Users List */}
+            {userAccounts.length === 0 ? (
+              <div className="bg-white p-6 rounded-2xl border border-dashed border-stone-300 text-center space-y-2">
+                <Users className="w-8 h-8 text-stone-300 mx-auto" />
+                <p className="text-stone-600 font-medium">
+                  {isPt ? 'Nenhum usuário com acesso limitado cadastrado.' : 'No hay usuarios con acceso limitado registrados.'}
+                </p>
+                <p className="text-stone-400 text-[11px]">
+                  {isPt
+                    ? 'Por padrão, apenas a senha do Administrador Master tem acesso total. Clique em "Adicionar Usuário" para criar acessos restritos.'
+                    : 'Por defecto, solo la contraseña de Administrador Master tiene acceso.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {userAccounts.map((user) => {
+                  const isPinVisible = showUserPins[user.id];
+                  return (
+                    <div key={user.id} className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs space-y-3 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2 border-b pb-2">
+                          <div>
+                            <h4 className="font-extrabold text-stone-900 text-sm">{user.name}</h4>
+                            <div className="flex items-center gap-1.5 text-stone-500 mt-1 text-[11px]">
+                              <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                              <span>PIN:</span>
+                              <span className="font-mono font-bold text-stone-800">
+                                {isPinVisible ? user.pin : '••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowUserPins(prev => ({ ...prev, [user.id]: !prev[user.id] }))}
+                                className="text-stone-400 hover:text-stone-700 ml-1 cursor-pointer"
+                                title={isPinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+                              >
+                                {isPinVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditUser(user)}
+                              className="p-1.5 hover:bg-stone-100 text-amber-700 rounded-lg transition cursor-pointer"
+                              title="Editar Usuário"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUserAccount(user.id, user.name)}
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition cursor-pointer"
+                              title="Excluir Usuário"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Permissões badges */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                            {isPt ? 'Permissões de Edição:' : 'Permisos de Edición:'}
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {(user.allowedSections || []).map((sec) => {
+                              const secLabelMap: Record<string, string> = {
+                                midweek: isPt ? 'Meio de Semana' : 'Entre Semana',
+                                weekend: isPt ? 'Fim de Semana' : 'Fin de Semana',
+                                announcements: isPt ? 'Anúncios' : 'Anuncios',
+                                cleaning: isPt ? 'Limpeza' : 'Limpieza',
+                                witnessing: isPt ? 'Testemunho' : 'Predicación',
+                                groups: isPt ? 'Grupos' : 'Grupos',
+                                dictionary: isPt ? 'Dicionário' : 'Diccionario',
+                              };
+                              return (
+                                <span
+                                  key={sec}
+                                  className="bg-[#E8F0E6] text-[#1C4123] border border-[#1C4123]/20 font-bold text-[10px] px-2 py-0.5 rounded-md"
+                                >
+                                  {secLabelMap[sec] || sec}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Change Master PIN Form */}
           <form onSubmit={handleSavePin} className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3 max-w-md text-xs">
-            <h3 className="font-bold text-stone-900 text-sm">Alterar PIN / Senha de Acesso</h3>
+            <h3 className="font-bold text-stone-900 text-sm">{isPt ? 'Alterar Senha do Administrador Master' : 'Cambiar PIN Master'}</h3>
             {pinChangeMsg && (
               <p className="text-emerald-700 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200">
                 {pinChangeMsg}
               </p>
             )}
             <div>
-              <label className="font-semibold block mb-1">Novo PIN (mínimo 4 caracteres):</label>
+              <label className="font-semibold block mb-1">{isPt ? 'Novo PIN Master (mínimo 4 caracteres):' : 'Nuevo PIN Master:'}</label>
               <input
                 type="text"
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value)}
                 placeholder="Ex: 5678"
-                className="w-full border rounded-xl p-2.5 bg-white"
+                className="w-full border rounded-xl p-2.5 bg-white font-mono font-bold"
               />
             </div>
             <button
               type="submit"
-              className="bg-[#1C4123] text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-[#285A31] transition"
+              className="bg-[#1C4123] text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-[#285A31] transition cursor-pointer"
             >
-              Salvar Novo PIN
+              {isPt ? 'Salvar Novo PIN Master' : 'Guardar PIN Master'}
             </button>
           </form>
 
@@ -3248,6 +3598,125 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         onApplyParsedGroups={handleApplyParsedGroups}
         onApplyParsedAnnouncements={handleApplyParsedAnnouncements}
       />
+
+      {/* MODAL: CRIAR OU EDITAR USUÁRIO COM ACESSO LIMITADO */}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-stone-200 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 text-[#1C4123]">
+                <UserPlus className="w-5 h-5" />
+                <h3 className="font-extrabold text-base">
+                  {editingUserId
+                    ? (isPt ? 'Editar Usuário e Permissões' : 'Editar Usuario y Permisos')
+                    : (isPt ? 'Cadastrar Usuário com Acesso Limitado' : 'Registrar Usuario con Acceso Limitado')}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowUserModal(false)}
+                className="p-1 hover:bg-stone-100 rounded-full text-stone-500 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-stone-800 mb-1">
+                  {isPt ? 'Nome ou Descrição do Usuário:' : 'Nombre o Descripción del Usuario:'}
+                </label>
+                <input
+                  type="text"
+                  value={userNameInput}
+                  onChange={(e) => setUserNameInput(e.target.value)}
+                  placeholder={isPt ? 'Ex: Irmão Pedro - Ajudante Meio de Semana' : 'Ej: Hermano Pedro'}
+                  className="w-full border border-stone-300 rounded-xl p-3 bg-stone-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C4123]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-800 mb-1">
+                  {isPt ? 'Senha / PIN de Acesso (mínimo 4 dígitos):' : 'Contraseña / PIN de Acceso:'}
+                </label>
+                <input
+                  type="text"
+                  value={userPinInput}
+                  onChange={(e) => setUserPinInput(e.target.value)}
+                  placeholder={isPt ? 'Ex: 4321' : 'Ej: 4321'}
+                  className="w-full border border-stone-300 rounded-xl p-3 bg-stone-50/50 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1C4123]"
+                  required
+                />
+                <p className="text-[11px] text-stone-500 mt-1">
+                  {isPt
+                    ? 'Ao fazer login com este PIN, o sistema identificará este usuário e liberará apenas as abas selecionadas.'
+                    : 'Al iniciar sesión con este PIN, el sistema identificará a este usuario.'}
+                </p>
+              </div>
+
+              {/* Section Checkboxes */}
+              <div className="space-y-2 pt-2 border-t">
+                <label className="block font-bold text-stone-900 text-xs">
+                  {isPt ? 'Escolha quais seções este usuário pode acessar e editar:' : 'Elija qué secciones puede editar este usuario:'}
+                </label>
+
+                <div className="grid grid-cols-1 gap-2 pt-1">
+                  {[
+                    { id: 'midweek' as AdminSection, labelPt: 'Reunião Meio de Semana', labelEs: 'Reunión Entre Semana', icon: <BookOpen className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'weekend' as AdminSection, labelPt: 'Reunião Fim de Semana', labelEs: 'Reunión Fin de Semana', icon: <Calendar className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'announcements' as AdminSection, labelPt: 'Anúncios e Lembretes', labelEs: 'Anuncios e Recordatorios', icon: <Megaphone className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'cleaning' as AdminSection, labelPt: 'Escala de Limpeza', labelEs: 'Limpieza del Salón', icon: <Sparkles className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'witnessing' as AdminSection, labelPt: 'Testemunho Público / Carrinho', labelEs: 'Predicación / Carrito', icon: <MapPin className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'groups' as AdminSection, labelPt: 'Grupos de Campo', labelEs: 'Grupos de Campo', icon: <Users className="w-4 h-4 text-[#1C4123]" /> },
+                    { id: 'dictionary' as AdminSection, labelPt: 'Dicionário de Tradução', labelEs: 'Diccionario de Traducción', icon: <Globe className="w-4 h-4 text-[#1C4123]" /> },
+                  ].map((sec) => {
+                    const checked = userAllowedSections.includes(sec.id);
+                    return (
+                      <div
+                        key={sec.id}
+                        onClick={() => toggleSectionPermission(sec.id)}
+                        className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition select-none ${
+                          checked
+                            ? 'bg-[#E8F0E6] border-[#1C4123] text-[#1C4123] font-bold'
+                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {sec.icon}
+                          <span>{isPt ? sec.labelPt : sec.labelEs}</span>
+                        </div>
+                        {checked ? (
+                          <CheckSquare className="w-5 h-5 text-[#1C4123]" />
+                        ) : (
+                          <Square className="w-5 h-5 text-stone-300" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowUserModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-stone-300 font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  {isPt ? 'Cancelar' : 'Cancelar'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl bg-[#1C4123] hover:bg-[#285A31] text-white font-bold transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isPt ? 'Salvar Usuário' : 'Guardar Usuario'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating Accessibility Text Scale Selector Bar */}
       <TextScaleBar textScale={textScale} setTextScale={setTextScale} language={language} />

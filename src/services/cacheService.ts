@@ -12,6 +12,7 @@ const CACHE_KEYS = {
   GROUPS: 'quadro_cache_groups_v1',
   CARD_IMAGES: 'quadro_cache_card_images_v1',
   CUSTOM_TRANSLATIONS: 'quadro_cache_custom_translations_v1',
+  USER_ACCOUNTS: 'quadro_cache_user_accounts_v1',
   LAST_UPDATE: 'quadro_cache_last_update_v1',
 };
 
@@ -60,6 +61,9 @@ export const cacheService = {
 
   getCustomTranslations: <T>() => getCachedItem<T>(CACHE_KEYS.CUSTOM_TRANSLATIONS),
   setCustomTranslations: <T>(data: T) => setCachedItem(CACHE_KEYS.CUSTOM_TRANSLATIONS, data),
+
+  getUserAccounts: <T>() => getCachedItem<T[]>(CACHE_KEYS.USER_ACCOUNTS),
+  setUserAccounts: <T>(data: T[]) => setCachedItem(CACHE_KEYS.USER_ACCOUNTS, data),
 
   getLastUpdate: () => localStorage.getItem(CACHE_KEYS.LAST_UPDATE),
   

@@ -15,7 +15,8 @@ import {
   PublicWitnessingSchedule, 
   CongregationGroup,
   CardImages,
-  DEFAULT_CARD_IMAGES
+  DEFAULT_CARD_IMAGES,
+  UserAccount
 } from '../types';
 import { 
   setCustomTranslationsData, 
@@ -592,6 +593,52 @@ export async function seedAllData(): Promise<void> {
   await seedCollection(CLEANING_COL, INITIAL_CLEANING);
   await seedCollection(WITNESSING_COL, INITIAL_WITNESSING);
   await seedCollection(GROUPS_COL, INITIAL_GROUPS);
+}
+
+// Subscribe & Save User Accounts
+export function subscribeUserAccounts(onUpdate: (users: UserAccount[]) => void) {
+  const cached = cacheService.getUserAccounts<UserAccount>();
+  if (cached && Array.isArray(cached)) {
+    onUpdate(cached);
+  } else {
+    onUpdate([]);
+  }
+
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, SETTINGS_COL, 'user_accounts');
+    return onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const users = (data?.users || []) as UserAccount[];
+          cacheService.setUserAccounts(users);
+          onUpdate(users);
+        } else {
+          cacheService.setUserAccounts([]);
+          onUpdate([]);
+        }
+      },
+      () => {
+        const fallback = cacheService.getUserAccounts<UserAccount>() || [];
+        onUpdate(fallback);
+      }
+    );
+  } catch {
+    const fallback = cacheService.getUserAccounts<UserAccount>() || [];
+    onUpdate(fallback);
+    return () => {};
+  }
+}
+
+export async function saveUserAccounts(users: UserAccount[]): Promise<void> {
+  cacheService.setUserAccounts(users);
+  if (db) {
+    const docRef = doc(db, SETTINGS_COL, 'user_accounts');
+    await setDoc(docRef, { users }, { merge: true });
+  }
 }
 
 // Clear All Database Data Permanently

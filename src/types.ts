@@ -1,5 +1,30 @@
 export type AppLanguage = string;
 
+export type AdminSection = 
+  | 'midweek' 
+  | 'weekend' 
+  | 'announcements' 
+  | 'cleaning' 
+  | 'witnessing' 
+  | 'groups' 
+  | 'dictionary' 
+  | 'settings';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  pin: string;
+  allowedSections: AdminSection[];
+  createdAt?: string;
+}
+
+export interface UserAuthSession {
+  isMaster: boolean;
+  userName?: string;
+  user?: UserAccount;
+  allowedSections: AdminSection[];
+}
+
 export type PageView = 
   | 'home' 
   | 'midweek' 
