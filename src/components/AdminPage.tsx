@@ -9,7 +9,9 @@ import {
   PublicWitnessingSchedule, 
   CongregationGroup,
   MinisterioPart,
-  VidaCristaPart
+  VidaCristaPart,
+  CardImages,
+  DEFAULT_CARD_IMAGES
 } from '../types';
 import { 
   saveMidweekMeeting, 
@@ -24,11 +26,13 @@ import {
   deleteWitnessingSchedule,
   saveGroup,
   deleteGroup,
-  clearAllDatabaseData
+  clearAllDatabaseData,
+  saveCardImages
 } from '../services/firestoreService';
 import { getMondayOf, formatYYYYMMDD } from '../utils/weekUtils';
 import { formatToDDMMYYYY } from '../utils/dateUtils';
 import { cleanPartTitle } from '../utils/textUtils';
+import { optimizeImage } from '../utils/imageOptimizer';
 import { 
   Lock, 
   Unlock, 
@@ -54,13 +58,16 @@ import {
   X,
   AlertTriangle,
   Globe,
-  Languages
+  Languages,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { FileImportModal } from './FileImportModal';
 import { ParsedMeetingData } from '../utils/fileImportParser';
 
-const formatWeekLabelFromDate = (dateStr: string, isPtLang: boolean = true): string => {
+const formatWeekLabelFromDate = (dateStr: string, _isPtLang: boolean = true): string => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
   if (parts.length !== 3) return '';
@@ -79,55 +86,26 @@ const formatWeekLabelFromDate = (dateStr: string, isPtLang: boolean = true): str
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  const monthsPt = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-  const monthsEs = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  const months = isPtLang ? monthsPt : monthsEs;
+  const monDay = String(monday.getDate()).padStart(2, '0');
+  const monMonth = String(monday.getMonth() + 1).padStart(2, '0');
+  const monYear = monday.getFullYear();
 
-  const monDay = monday.getDate();
-  const sunDay = sunday.getDate();
-  const monMonth = months[monday.getMonth()];
-  const sunMonth = months[sunday.getMonth()];
-  const year = sunday.getFullYear();
+  const sunDay = String(sunday.getDate()).padStart(2, '0');
+  const sunMonth = String(sunday.getMonth() + 1).padStart(2, '0');
+  const sunYear = sunday.getFullYear();
 
-  if (monday.getMonth() === sunday.getMonth()) {
-    return `${monDay} a ${sunDay} de ${monMonth} de ${year}`;
-  } else {
-    return `${monDay} de ${monMonth} a ${sunDay} de ${sunMonth} de ${year}`;
-  }
+  return `${monDay}/${monMonth}/${monYear} - ${sunDay}/${sunMonth}/${sunYear}`;
 };
 
-const formatExactDateLabel = (dateStr: string, isPtLang: boolean = true): string => {
+const formatExactDateLabel = (dateStr: string, _isPtLang: boolean = true): string => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
-  if (parts.length !== 3) return '';
-  const yearNum = parseInt(parts[0], 10);
-  const monthNum = parseInt(parts[1], 10) - 1;
-  const dayNum = parseInt(parts[2], 10);
+  if (parts.length !== 3) return dateStr;
+  const day = String(parts[2]).padStart(2, '0');
+  const month = String(parts[1]).padStart(2, '0');
+  const year = parts[0];
 
-  const selectedDate = new Date(yearNum, monthNum, dayNum);
-  if (isNaN(selectedDate.getTime())) return '';
-
-  const monthsPt = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-  const monthsEs = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  const months = isPtLang ? monthsPt : monthsEs;
-
-  const day = selectedDate.getDate();
-  const month = months[selectedDate.getMonth()];
-  const year = selectedDate.getFullYear();
-
-  return `${day} de ${month} de ${year}`;
+  return `${day}/${month}/${year}`;
 };
 
 interface AdminPageProps {
@@ -142,6 +120,7 @@ interface AdminPageProps {
   cleaningList: CleaningSchedule[];
   witnessingList: PublicWitnessingSchedule[];
   groupsList: CongregationGroup[];
+  cardImages?: CardImages;
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({
@@ -156,6 +135,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   cleaningList,
   witnessingList,
   groupsList,
+  cardImages,
 }) => {
   const isPt = language === 'pt';
 
@@ -271,6 +251,65 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Clear Database Confirmation States
   const [showClearConfirmText, setShowClearConfirmText] = useState(false);
   const [confirmInputText, setConfirmInputText] = useState('');
+
+  // Card Images State & Handlers
+  const [currentCardImages, setCurrentCardImages] = useState<CardImages>(
+    cardImages || DEFAULT_CARD_IMAGES
+  );
+  const [uploadingCard, setUploadingCard] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cardImages) {
+      setCurrentCardImages(cardImages);
+    }
+  }, [cardImages]);
+
+  const handleCardImageUpload = async (cardKey: keyof CardImages, file: File) => {
+    try {
+      setUploadingCard(cardKey);
+      const { dataUrl } = await optimizeImage(file, 1200, 400 * 1024);
+      
+      const updated = {
+        ...currentCardImages,
+        [cardKey]: dataUrl,
+      };
+      setCurrentCardImages(updated);
+      await saveCardImages(updated);
+      setSuccessMsg(
+        isPt ? 'Foto do card atualizada com sucesso!' : '¡Foto de tarjeta actualizada con éxito!'
+      );
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Error uploading card image:', err);
+      alert(isPt ? 'Erro ao processar imagem.' : 'Error al procesar la imagen.');
+    } finally {
+      setUploadingCard(null);
+    }
+  };
+
+  const handleResetSingleCardImage = async (cardKey: keyof CardImages) => {
+    const updated = {
+      ...currentCardImages,
+      [cardKey]: DEFAULT_CARD_IMAGES[cardKey],
+    };
+    setCurrentCardImages(updated);
+    await saveCardImages(updated);
+    setSuccessMsg(
+      isPt ? 'Foto padrão restaurada!' : '¡Foto predeterminada restaurada!'
+    );
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const handleResetAllCardImages = async () => {
+    if (window.confirm(isPt ? 'Deseja restaurar todas as fotos dos cards da tela principal para o padrão?' : '¿Desea restaurar todas las fotos predeterminadas?')) {
+      setCurrentCardImages(DEFAULT_CARD_IMAGES);
+      await saveCardImages(DEFAULT_CARD_IMAGES);
+      setSuccessMsg(
+        isPt ? 'Todas as fotos padrão foram restauradas!' : '¡Todas las fotos por defecto fueron restauradas!'
+      );
+      setTimeout(() => setSuccessMsg(''), 4000);
+    }
+  };
 
   // Close open modals when user presses hardware/browser Back button
   useEffect(() => {
@@ -2341,6 +2380,127 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Card Images Upload Section */}
+          <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4 max-w-3xl text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+              <div>
+                <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-[#1C4123]" />
+                  <span>{isPt ? 'Fotos dos Cards da Tela Principal' : 'Fotos de las Tarjetas de la Pantalla Principal'}</span>
+                </h3>
+                <p className="text-stone-600 mt-1">
+                  {isPt
+                    ? 'Faça upload de fotos personalizadas para os cards da tela inicial. As fotos ficam salvas no sistema e visíveis em todos os dispositivos.'
+                    : 'Cargue fotos personalizadas para las tarjetas de la pantalla principal.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetAllCardImages}
+                className="flex items-center gap-1.5 text-stone-600 hover:text-red-700 font-semibold px-3 py-1.5 bg-stone-200 hover:bg-stone-300 rounded-xl transition cursor-pointer text-xs shrink-0 self-start sm:self-auto"
+                title={isPt ? 'Restaurar todas as fotos padrão' : 'Restaurar todas las fotos predeterminadas'}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{isPt ? 'Restaurar Padrões' : 'Restaurar Val. Defecto'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+              {([
+                {
+                  key: 'midweek' as keyof CardImages,
+                  title: isPt ? 'Reunião Meio de Semana' : 'Reunión Entre Semana',
+                },
+                {
+                  key: 'weekend' as keyof CardImages,
+                  title: isPt ? 'Reunião Fim de Semana' : 'Reunión Fin de Semana',
+                },
+                {
+                  key: 'cleaning' as keyof CardImages,
+                  title: isPt ? 'Limpeza do Salão' : 'Limpieza del Salón',
+                },
+                {
+                  key: 'witnessing' as keyof CardImages,
+                  title: isPt ? 'Testemunho Público' : 'Testimonio Público',
+                },
+                {
+                  key: 'groups' as keyof CardImages,
+                  title: isPt ? 'Grupos de Campo' : 'Grupos de Campo',
+                },
+              ]).map((item) => {
+                const currentUrl = currentCardImages[item.key] || DEFAULT_CARD_IMAGES[item.key];
+                const isCustom = Boolean(currentCardImages[item.key] && currentCardImages[item.key] !== DEFAULT_CARD_IMAGES[item.key]);
+                const isUploading = uploadingCard === item.key;
+
+                return (
+                  <div key={item.key} className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-stone-900">{item.title}</span>
+                        {isCustom ? (
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            {isPt ? 'Personalizada' : 'Personalizada'}
+                          </span>
+                        ) : (
+                          <span className="bg-stone-100 text-stone-600 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                            {isPt ? 'Padrão' : 'Por Defecto'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Thumbnail Preview */}
+                      <div className="relative h-32 w-full rounded-xl overflow-hidden bg-stone-100 border border-stone-200 group">
+                        <img
+                          src={currentUrl}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                        <span className="absolute bottom-2 left-2 text-white font-bold text-xs drop-shadow-md">
+                          {item.title}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <label className="flex-1 flex items-center justify-center gap-1.5 bg-[#1C4123] hover:bg-[#285A31] text-white font-bold py-2 px-3 rounded-xl cursor-pointer transition text-xs shadow-xs text-center">
+                        {isUploading ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isUploading ? (isPt ? 'Enviando...' : 'Enviando...') : (isPt ? 'Fazer Upload' : 'Cargar Foto')}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleCardImageUpload(item.key, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+
+                      {isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => handleResetSingleCardImage(item.key)}
+                          className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition cursor-pointer"
+                          title={isPt ? 'Restaurar foto padrão' : 'Restaurar foto por defecto'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Change PIN Form */}

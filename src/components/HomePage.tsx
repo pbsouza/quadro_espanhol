@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppLanguage, PageView, Announcement } from '../types';
+import { AppLanguage, PageView, Announcement, CardImages, DEFAULT_CARD_IMAGES } from '../types';
 import { Megaphone, Calendar, ChevronRight, Settings } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { getTranslation } from '../data/translations';
@@ -10,6 +10,7 @@ interface HomePageProps {
   onNavigate: (page: PageView) => void;
   announcements: Announcement[];
   onOpenAdmin: () => void;
+  cardImages?: CardImages;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -18,11 +19,13 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigate,
   announcements,
   onOpenAdmin,
+  cardImages,
 }) => {
   const t = getTranslation(language);
   const isPt = language === 'pt';
   const [textScale, setTextScale] = useState<number>(1);
 
+  const images = { ...DEFAULT_CARD_IMAGES, ...(cardImages || {}) };
   const upcomingCount = announcements.length;
 
   return (
@@ -118,7 +121,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="relative h-44 rounded-2xl overflow-hidden shadow-md cursor-pointer group hover:opacity-95 transition"
           >
             <img
-              src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=800"
+              src={images.midweek || '/img/midweek.jpg'}
               alt={t.midweekMeetingCard}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
               referrerPolicy="no-referrer"
@@ -137,7 +140,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="relative h-44 rounded-2xl overflow-hidden shadow-md cursor-pointer group hover:opacity-95 transition"
           >
             <img
-              src="https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=800"
+              src={images.weekend || '/img/weekend.jpg'}
               alt={t.weekendMeetingCard}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
               referrerPolicy="no-referrer"
@@ -156,7 +159,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="relative h-44 rounded-2xl overflow-hidden shadow-md cursor-pointer group hover:opacity-95 transition"
           >
             <img
-              src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800"
+              src={images.cleaning || '/img/cleaning.jpg'}
               alt={t.cleaningCard}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
               referrerPolicy="no-referrer"
@@ -175,7 +178,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="relative h-44 rounded-2xl overflow-hidden shadow-md cursor-pointer group hover:opacity-95 transition"
           >
             <img
-              src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=800"
+              src={images.witnessing || '/img/witnessing.jpg'}
               alt={t.witnessingCard}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
               referrerPolicy="no-referrer"
@@ -188,35 +191,17 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
 
-          {/* 5. Grupos Bento/Composite Collage Card */}
+          {/* 5. Grupos de Campo Card */}
           <div
             onClick={() => onNavigate('groups')}
             className="relative h-48 sm:col-span-2 rounded-2xl overflow-hidden shadow-md cursor-pointer group hover:opacity-95 transition bg-stone-900"
           >
-            <div className="grid grid-cols-3 h-full gap-0.5">
-              <div className="col-span-2 h-full">
-                <img
-                  src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&q=80&w=600"
-                  alt={t.groupsCard}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="col-span-1 grid grid-rows-2 gap-0.5 h-full">
-                <img
-                  src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=400"
-                  alt={t.groupsCard}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  referrerPolicy="no-referrer"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=400"
-                  alt={t.groupsCard}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </div>
+            <img
+              src={images.groups || '/img/groups.jpg'}
+              alt={t.groupsCard}
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              referrerPolicy="no-referrer"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
             <div className="absolute bottom-4 inset-x-0 text-center pointer-events-none">
               <span className="text-white text-lg font-bold tracking-wide drop-shadow-md">

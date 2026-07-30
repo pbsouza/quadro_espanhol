@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileText, Upload, Sparkles, X, Check, FileCode, AlertCircle, Camera, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
 import { extractTextFromFile, parseMeetingText, ParsedMeetingData } from '../utils/fileImportParser';
 import { cleanPartTitle } from '../utils/textUtils';
+import { formatToDDMMYYYY } from '../utils/dateUtils';
 import { optimizeImage } from '../utils/imageOptimizer';
 import { 
   getStoredGeminiApiKey, 
@@ -823,7 +824,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
                               : 'bg-white text-stone-800 hover:bg-stone-100 border-stone-300'
                           }`}
                         >
-                          {wk.weekLabel ? wk.weekLabel : `${isPt ? 'Semana' : 'Semana'} ${idx + 1}`}
+                          {wk.weekLabel ? formatToDDMMYYYY(wk.weekLabel) : `${isPt ? 'Semana' : 'Semana'} ${idx + 1}`}
                         </button>
                       ))}
                     </div>
@@ -854,7 +855,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
                           <div>
                             <div className="flex items-center justify-between gap-1 mb-1 border-b pb-1 border-current/20">
                               <span className="font-extrabold truncate">
-                                {wk.weekLabel || `Semana ${idx + 1}`}
+                                {formatToDDMMYYYY(wk.weekLabel) || `Semana ${idx + 1}`}
                               </span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-amber-300 text-amber-950' : 'bg-stone-100 text-stone-700'}`}>
                                 #{idx + 1}
@@ -885,7 +886,7 @@ export const FileImportModal: React.FC<FileImportModalProps> = ({
                 <div className="flex items-center justify-between border-b pb-2 border-stone-200">
                   <span className="font-extrabold text-sm text-[#1C4123]">
                     {isPt ? `Detalhes da Semana ${selectedWeekIdx + 1}` : `Detalles de la Semana ${selectedWeekIdx + 1}`}
-                    {activeParsed.weekLabel ? `: ${activeParsed.weekLabel}` : ''}
+                    {activeParsed.weekLabel ? `: ${formatToDDMMYYYY(activeParsed.weekLabel)}` : ''}
                   </span>
                   <span className="text-xs text-stone-500 font-bold">
                     {isPt ? 'Inspeção dos dados extraídos' : 'Inspección de datos'}

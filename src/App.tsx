@@ -7,7 +7,9 @@ import {
   Announcement, 
   CleaningSchedule, 
   PublicWitnessingSchedule, 
-  CongregationGroup 
+  CongregationGroup,
+  CardImages,
+  DEFAULT_CARD_IMAGES
 } from './types';
 import { 
   subscribeMidweekMeetings, 
@@ -15,7 +17,8 @@ import {
   subscribeAnnouncements, 
   subscribeCleaning, 
   subscribeWitnessing, 
-  subscribeGroups 
+  subscribeGroups,
+  subscribeCardImages
 } from './services/firestoreService';
 import { findCurrentWeekIndex, filterPublicWeeks } from './utils/weekUtils';
 import { isExpired } from './utils/dateUtils';
@@ -68,6 +71,7 @@ export default function App() {
   const [cleaningList, setCleaningList] = useState<CleaningSchedule[]>([]);
   const [witnessingList, setWitnessingList] = useState<PublicWitnessingSchedule[]>([]);
   const [groupsList, setGroupsList] = useState<CongregationGroup[]>([]);
+  const [cardImages, setCardImages] = useState<CardImages>(DEFAULT_CARD_IMAGES);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
@@ -171,6 +175,7 @@ export default function App() {
     const unsubCleaning = subscribeCleaning((data) => setCleaningList(data));
     const unsubWitnessing = subscribeWitnessing((data) => setWitnessingList(data));
     const unsubGroups = subscribeGroups((data) => setGroupsList(data));
+    const unsubCardImages = subscribeCardImages((data) => setCardImages(data));
 
     return () => {
       unsubMidweek();
@@ -179,6 +184,7 @@ export default function App() {
       unsubCleaning();
       unsubWitnessing();
       unsubGroups();
+      unsubCardImages();
     };
   }, []);
 
@@ -201,6 +207,7 @@ export default function App() {
           onNavigate={handleNavigate}
           announcements={publicAnnouncements}
           onOpenAdmin={() => handleNavigate('admin')}
+          cardImages={cardImages}
         />
       )}
 
@@ -277,6 +284,7 @@ export default function App() {
           cleaningList={cleaningList}
           witnessingList={witnessingList}
           groupsList={groupsList}
+          cardImages={cardImages}
         />
       )}
 

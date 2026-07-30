@@ -13,7 +13,9 @@ import {
   Announcement, 
   CleaningSchedule, 
   PublicWitnessingSchedule, 
-  CongregationGroup 
+  CongregationGroup,
+  CardImages,
+  DEFAULT_CARD_IMAGES
 } from '../types';
 import { 
   INITIAL_MIDWEEK_MEETINGS, 
@@ -33,6 +35,7 @@ const ANNOUNCEMENTS_COL = 'announcements';
 const CLEANING_COL = 'cleaning_schedule';
 const WITNESSING_COL = 'public_witnessing';
 const GROUPS_COL = 'groups';
+const SETTINGS_COL = 'app_settings';
 
 // Subscribe to Midweek Meetings (All weeks from database)
 export function subscribeMidweekMeetings(
@@ -212,7 +215,53 @@ export function subscribeCleaning(onUpdate: (data: CleaningSchedule[]) => void) 
   }
 }
 
-// Subscribe to Public Witnessing
+// Subscribe to Card Images
+export function subscribeCardImages(onUpdate: (data: CardImages) => void) {
+  const cached = cacheService.getCardImages<CardImages>();
+  const initial = { ...DEFAULT_CARD_IMAGES, ...(cached || {}) };
+  onUpdate(initial);
+
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, SETTINGS_COL, 'card_images');
+    return onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as CardImages;
+          const merged = { ...DEFAULT_CARD_IMAGES, ...data };
+          cacheService.setCardImages(merged);
+          onUpdate(merged);
+        } else {
+          cacheService.setCardImages(DEFAULT_CARD_IMAGES);
+          onUpdate(DEFAULT_CARD_IMAGES);
+        }
+      },
+      (err) => {
+        console.warn('Firestore subscription error (card_images):', err);
+        const fallback = cacheService.getCardImages<CardImages>() || DEFAULT_CARD_IMAGES;
+        onUpdate({ ...DEFAULT_CARD_IMAGES, ...fallback });
+      }
+    );
+  } catch (err) {
+    console.warn('Error connecting to firestore card_images:', err);
+    const fallback = cacheService.getCardImages<CardImages>() || DEFAULT_CARD_IMAGES;
+    onUpdate({ ...DEFAULT_CARD_IMAGES, ...fallback });
+    return () => {};
+  }
+}
+
+export async function saveCardImages(images: CardImages): Promise<void> {
+  const merged = { ...DEFAULT_CARD_IMAGES, ...images };
+  cacheService.setCardImages(merged);
+
+  if (db) {
+    const docRef = doc(db, SETTINGS_COL, 'card_images');
+    await setDoc(docRef, merged, { merge: true });
+  }
+}
+
 export function subscribeWitnessing(onUpdate: (data: PublicWitnessingSchedule[]) => void) {
   const cached = cacheService.getWitnessing<PublicWitnessingSchedule>();
   if (cached && Array.isArray(cached)) {

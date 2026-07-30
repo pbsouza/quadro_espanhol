@@ -10,6 +10,7 @@ const CACHE_KEYS = {
   CLEANING: 'quadro_cache_cleaning_v1',
   WITNESSING: 'quadro_cache_witnessing_v1',
   GROUPS: 'quadro_cache_groups_v1',
+  CARD_IMAGES: 'quadro_cache_card_images_v1',
   LAST_UPDATE: 'quadro_cache_last_update_v1',
 };
 
@@ -52,6 +53,9 @@ export const cacheService = {
 
   getGroups: <T>() => getCachedItem<T[]>(CACHE_KEYS.GROUPS),
   setGroups: <T>(data: T[]) => setCachedItem(CACHE_KEYS.GROUPS, data),
+
+  getCardImages: <T>() => getCachedItem<T>(CACHE_KEYS.CARD_IMAGES),
+  setCardImages: <T>(data: T) => setCachedItem(CACHE_KEYS.CARD_IMAGES, data),
 
   getLastUpdate: () => localStorage.getItem(CACHE_KEYS.LAST_UPDATE),
   

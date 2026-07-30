@@ -109,3 +109,19 @@ export interface CongregationGroup {
   schedule: string;
   members?: string[];
 }
+
+export interface CardImages {
+  midweek?: string;
+  weekend?: string;
+  cleaning?: string;
+  witnessing?: string;
+  groups?: string;
+}
+
+export const DEFAULT_CARD_IMAGES: CardImages = {
+  midweek: '/img/midweek.jpg',
+  weekend: '/img/weekend.jpg',
+  cleaning: '/img/cleaning.jpg',
+  witnessing: '/img/witnessing.jpg',
+  groups: '/img/groups.jpg',
+};
