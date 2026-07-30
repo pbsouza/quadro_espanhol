@@ -299,7 +299,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
               );
 
               return (
-                <div key={part.id || idx} className={idx > 0 ? 'pt-3' : ''}>
+                <div key={part.id ? `faca_${part.id}_${idx}` : `faca_${idx}`} className={idx > 0 ? 'pt-3' : ''}>
                   <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
                     {itemNum}. {cleanPartTitle(part.title)}
                   </p>
@@ -384,7 +384,7 @@ export const MidweekMeetingPage: React.FC<MidweekMeetingPageProps> = ({
           {nossaVidaCristaList.map((part, idx) => {
             const itemNum = vidaCristaStartNum + idx;
             return (
-              <div key={part.id || idx} className="pt-3">
+              <div key={part.id ? `vida_${part.id}_${idx}` : `vida_${idx}`} className="pt-3">
                 <p className={getScaledTextSize("font-bold text-stone-900 text-sm sm:text-base")}>
                   {itemNum}. {cleanPartTitle(part.title)}
                 </p>

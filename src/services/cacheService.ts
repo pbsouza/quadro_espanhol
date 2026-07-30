@@ -11,6 +11,7 @@ const CACHE_KEYS = {
   WITNESSING: 'quadro_cache_witnessing_v1',
   GROUPS: 'quadro_cache_groups_v1',
   CARD_IMAGES: 'quadro_cache_card_images_v1',
+  CUSTOM_TRANSLATIONS: 'quadro_cache_custom_translations_v1',
   LAST_UPDATE: 'quadro_cache_last_update_v1',
 };
 
@@ -56,6 +57,9 @@ export const cacheService = {
 
   getCardImages: <T>() => getCachedItem<T>(CACHE_KEYS.CARD_IMAGES),
   setCardImages: <T>(data: T) => setCachedItem(CACHE_KEYS.CARD_IMAGES, data),
+
+  getCustomTranslations: <T>() => getCachedItem<T>(CACHE_KEYS.CUSTOM_TRANSLATIONS),
+  setCustomTranslations: <T>(data: T) => setCachedItem(CACHE_KEYS.CUSTOM_TRANSLATIONS, data),
 
   getLastUpdate: () => localStorage.getItem(CACHE_KEYS.LAST_UPDATE),
   

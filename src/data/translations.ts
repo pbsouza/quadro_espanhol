@@ -518,17 +518,82 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
   }
 };
 
+export interface LanguageOption {
+  code: string;
+  name: string;
+}
+
+export interface CustomTranslationsData {
+  languages?: LanguageOption[];
+  customLanguages?: LanguageOption[];
+  dictionaries?: Record<string, Record<string, string>>;
+  translations?: Record<string, Record<string, string>>;
+}
+
+const DEFAULT_LANGUAGES: LanguageOption[] = [
+  { code: 'pt', name: 'Português' },
+  { code: 'es', name: 'Español' },
+];
+
+let customTranslationsState: CustomTranslationsData = {
+  languages: DEFAULT_LANGUAGES,
+  customLanguages: DEFAULT_LANGUAGES,
+  dictionaries: {},
+  translations: {},
+};
+
+const translationListeners: Array<(data: CustomTranslationsData) => void> = [];
+
+export function setCustomTranslationsData(data: Partial<CustomTranslationsData>) {
+  const rawLangs = data.languages || data.customLanguages;
+  const rawDicts = data.dictionaries || data.translations || {};
+  customTranslationsState = {
+    languages: rawLangs && rawLangs.length > 0 ? rawLangs : DEFAULT_LANGUAGES,
+    customLanguages: rawLangs && rawLangs.length > 0 ? rawLangs : DEFAULT_LANGUAGES,
+    dictionaries: rawDicts,
+    translations: rawDicts,
+  };
+  translationListeners.forEach((fn) => fn(customTranslationsState));
+}
+
+export function subscribeTranslationUpdates(listener: (data: CustomTranslationsData) => void) {
+  translationListeners.push(listener);
+  listener(customTranslationsState);
+  return () => {
+    const idx = translationListeners.indexOf(listener);
+    if (idx >= 0) translationListeners.splice(idx, 1);
+  };
+}
+
+export function getAvailableLanguages(): LanguageOption[] {
+  return customTranslationsState.languages && customTranslationsState.languages.length > 0
+    ? customTranslationsState.languages
+    : DEFAULT_LANGUAGES;
+}
+
+export function getCustomTranslationsData(): CustomTranslationsData {
+  return customTranslationsState;
+}
+
 /**
- * Helper function to retrieve a translation by key and language
+ * Helper function to retrieve a translation dictionary merged with custom overrides
  */
 export function getTranslation(lang: AppLanguage = 'pt'): TranslationDictionary {
-  return translations[lang] || translations.pt;
+  const baseDict = translations[lang] || translations.pt;
+  const customDict = customTranslationsState.dictionaries[lang] || {};
+
+  return {
+    ...translations.pt,
+    ...baseDict,
+    ...customDict,
+  } as TranslationDictionary;
 }
 
 /**
  * Helper function to retrieve a specific translated string by key
  */
 export function t(key: keyof TranslationDictionary, lang: AppLanguage = 'pt'): string {
-  const dict = translations[lang] || translations.pt;
+  const dict = getTranslation(lang);
   return dict[key] || translations.pt[key] || String(key);
 }
+

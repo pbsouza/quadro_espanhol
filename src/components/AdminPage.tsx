@@ -65,6 +65,7 @@ import {
 } from 'lucide-react';
 import { TextScaleBar } from './TextScaleBar';
 import { FileImportModal } from './FileImportModal';
+import { DictionaryEditor } from './DictionaryEditor';
 import { ParsedMeetingData } from '../utils/fileImportParser';
 
 const formatWeekLabelFromDate = (dateStr: string, _isPtLang: boolean = true): string => {
@@ -242,7 +243,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Management Tab State
   const [activeTab, setActiveTab] = useState<
-    'midweek' | 'weekend' | 'announcements' | 'cleaning' | 'witnessing' | 'groups' | 'settings'
+    'midweek' | 'weekend' | 'announcements' | 'cleaning' | 'witnessing' | 'groups' | 'settings' | 'dictionary'
   >('midweek');
 
   const [saving, setSaving] = useState(false);
@@ -508,26 +509,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         const extractNums = (str?: string) => (str ? (str.match(/\d+/g) || []).map(Number) : []);
         const dataNums = extractNums(data.weekLabel);
 
+        const dataParsedDate = parseItemDate({ weekLabel: data.weekLabel, weekDate: data.weekDate, weekId: data.weekLabel });
+        const dataMonday = dataParsedDate ? getMondayOf(dataParsedDate).getTime() : null;
+
         // Resolve weekDate (YYYY-MM-DD)
         let resolvedWeekDate = data.weekDate;
-        if (!resolvedWeekDate) {
-          const parsed = parseItemDate({ weekLabel: data.weekLabel, weekId: data.weekLabel });
-          if (parsed) {
-            resolvedWeekDate = formatYYYYMMDD(getMondayOf(parsed));
-          }
+        if (!resolvedWeekDate && dataParsedDate) {
+          resolvedWeekDate = formatYYYYMMDD(getMondayOf(dataParsedDate));
         }
-        if (!resolvedWeekDate) {
-          const baseMonday = getMondayOf(new Date());
-          baseMonday.setDate(baseMonday.getDate() + (i * 7));
-          resolvedWeekDate = formatYYYYMMDD(baseMonday);
-        }
+
+        // Unique fallback ID if no date could be parsed so it appends as a new entry instead of overwriting week 0
+        const distinctFallbackId = `week_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`;
+        const effectiveWeekDate = resolvedWeekDate || distinctFallbackId;
 
         // 1. Process Midweek ONLY if targeted
         if (isMidweekTarget) {
           let existingMidweek = allMidweekList.find(m => {
             if (usedMidweekIds.has(m.id)) return false;
-            if (m.weekId === resolvedWeekDate) return true;
+            if (resolvedWeekDate && m.weekId === resolvedWeekDate) return true;
             if (data.weekDate && m.weekId === data.weekDate) return true;
+            if (dataMonday) {
+              const mDate = parseItemDate(m);
+              if (mDate && getMondayOf(mDate).getTime() === dataMonday) return true;
+            }
             const mNums = extractNums(m.weekLabel);
             if (dataNums.length >= 2 && mNums.length >= 2) {
               return dataNums[0] === mNums[0] && dataNums[1] === mNums[1];
@@ -535,7 +539,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             return false;
           });
 
-          const weekId = existingMidweek?.weekId || resolvedWeekDate;
+          const weekId = existingMidweek?.weekId || effectiveWeekDate;
           const midweekId = existingMidweek?.id || `midweek_${weekId}`;
           const rawWeekLabel = data.weekLabel || existingMidweek?.weekLabel || `Semana ${i + 1}`;
           const weekLabel = formatToDDMMYYYY(rawWeekLabel);
@@ -596,8 +600,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         if (isWeekendTarget) {
           let existingWeekend = allWeekendList.find(w => {
             if (usedWeekendIds.has(w.id)) return false;
-            if (w.weekId === resolvedWeekDate) return true;
+            if (resolvedWeekDate && w.weekId === resolvedWeekDate) return true;
             if (data.weekDate && w.weekId === data.weekDate) return true;
+            if (dataMonday) {
+              const wDate = parseItemDate(w);
+              if (wDate && getMondayOf(wDate).getTime() === dataMonday) return true;
+            }
             const wNums = extractNums(w.weekLabel);
             if (dataNums.length >= 2 && wNums.length >= 2) {
               return dataNums[0] === wNums[0] && dataNums[1] === wNums[1];
@@ -605,7 +613,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             return false;
           });
 
-          const weekId = existingWeekend?.weekId || resolvedWeekDate;
+          const weekId = existingWeekend?.weekId || effectiveWeekDate;
           const weekendId = existingWeekend?.id || `weekend_${weekId}`;
           const rawWeekLabel = data.weekLabel || existingWeekend?.weekLabel || `Semana ${i + 1}`;
           const weekLabel = formatToDDMMYYYY(rawWeekLabel);
@@ -655,6 +663,62 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     } catch (err) {
       console.error('Error applying all parsed weeks:', err);
       alert(isPt ? 'Erro ao salvar todas as semanas.' : 'Error al guardar todas las semanas.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyParsedCleaning = async (items: CleaningSchedule[]) => {
+    setSaving(true);
+    try {
+      for (const item of items) {
+        await saveCleaningSchedule(item);
+      }
+      showNotification(isPt ? `${items.length} Escala(s) de limpeza salva(s) com sucesso!` : `¡${items.length} Escala(s) de limpieza guardada(s)!`);
+    } catch (err) {
+      console.error('Error saving cleaning schedules:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyParsedWitnessing = async (items: PublicWitnessingSchedule[]) => {
+    setSaving(true);
+    try {
+      for (const item of items) {
+        await saveWitnessingSchedule(item);
+      }
+      showNotification(isPt ? `${items.length} Turno(s) de testemunho salvo(s) com sucesso!` : `¡${items.length} Turno(s) de predicación guardado(s)!`);
+    } catch (err) {
+      console.error('Error saving witnessing schedules:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyParsedGroups = async (items: CongregationGroup[]) => {
+    setSaving(true);
+    try {
+      for (const item of items) {
+        await saveGroup(item);
+      }
+      showNotification(isPt ? `${items.length} Grupo(s) de serviço salvo(s) com sucesso!` : `¡${items.length} Grupo(s) de servicio guardado(s)!`);
+    } catch (err) {
+      console.error('Error saving groups:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyParsedAnnouncements = async (items: Announcement[]) => {
+    setSaving(true);
+    try {
+      for (const item of items) {
+        await saveAnnouncement(item);
+      }
+      showNotification(isPt ? `${items.length} Anúncio(s) salvo(s) com sucesso!` : `¡${items.length} Anuncio(s) guardado(s)!`);
+    } catch (err) {
+      console.error('Error saving announcements:', err);
     } finally {
       setSaving(false);
     }
@@ -1464,6 +1528,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           <Settings className="w-4 h-4" />
           <span>{isPt ? 'Configurações' : 'Ajustes'}</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('dictionary')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+            activeTab === 'dictionary'
+              ? 'bg-[#1C4123] text-white shadow-sm'
+              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>{isPt ? 'Dicionário' : 'Diccionario'}</span>
+        </button>
       </div>
 
       {/* TAB 1: REUNIÃO MEIO DE SEMANA */}
@@ -2076,7 +2152,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         <div className="space-y-6">
           {/* Form Create Announcement */}
           <form onSubmit={handleAddAnnouncement} className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-stone-200 space-y-4">
-            <h2 className="text-lg font-bold text-[#1C4123]">Publicar Novo Anúncio ou Lembrete</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#1C4123]">Publicar Novo Anúncio ou Lembrete</h2>
+                <p className="text-xs text-stone-500 font-medium">Crie manualmente ou preencha automaticamente por foto/documento com IA</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer self-start sm:self-auto"
+                title={isPt ? 'Importar anúncios por foto (Visão IA) ou documento' : 'Importar anuncios por foto (Visión IA) o documento'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT (IA)' : 'Importar Foto / PDF / TXT (IA)'}</span>
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="sm:col-span-2">
                 <label className="font-semibold block mb-1">Título do Anúncio:</label>
@@ -2147,8 +2237,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-stone-200 space-y-4">
             <h2 className="text-lg font-bold text-[#1C4123]">Anúncios Publicados ({announcements.length})</h2>
             <div className="space-y-3">
-              {announcements.map((ann) => (
-                <div key={ann.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 flex items-start justify-between gap-3">
+              {announcements.map((ann, idx) => (
+                <div key={ann.id ? `ann_${ann.id}_${idx}` : `ann_${idx}`} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 flex items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="bg-[#1C4123] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase">
@@ -2186,19 +2276,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <h2 className="text-lg font-bold text-[#1C4123]">Escala de Limpeza do Salão do Reino</h2>
               <p className="text-xs text-stone-500 font-medium">Gerenciar grupos e tarefas de limpeza</p>
             </div>
-            <button
-              onClick={() => setShowNewCleaningModal(true)}
-              disabled={saving}
-              className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Adicionar Escala de Limpeza</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+                title={isPt ? 'Importar limpeza por foto (Visão IA) ou documento' : 'Importar limpieza por foto (Visión IA) o documento'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT (IA)' : 'Importar Foto / PDF / TXT (IA)'}</span>
+              </button>
+              <button
+                onClick={() => setShowNewCleaningModal(true)}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Adicionar Escala de Limpeza</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
-            {cleaningList.map((item) => (
-              <div key={item.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-3 text-xs">
+            {cleaningList.map((item, idx) => (
+              <div key={item.id ? `clean_${item.id}_${idx}` : `clean_${idx}`} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-3 text-xs">
                 <div className="flex justify-between items-center font-bold text-stone-900 text-sm">
                   <span>{item.weekLabel}</span>
                   <div className="flex items-center gap-2">
@@ -2237,19 +2338,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <h2 className="text-lg font-bold text-[#1C4123]">Pontos de Testemunho Público / Carrinho</h2>
               <p className="text-xs text-stone-500 font-medium">Gerenciar pontos de testemunho urbano</p>
             </div>
-            <button
-              onClick={() => setShowNewWitnessingModal(true)}
-              disabled={saving}
-              className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Adicionar Ponto de Testemunho</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+                title={isPt ? 'Importar pontos de testemunho por foto (Visão IA) ou documento' : 'Importar puntos de predicación por foto (Visión IA) o documento'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT (IA)' : 'Importar Foto / PDF / TXT (IA)'}</span>
+              </button>
+              <button
+                onClick={() => setShowNewWitnessingModal(true)}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Adicionar Ponto de Testemunho</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
-            {witnessingList.map((item) => (
-              <div key={item.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-2 text-xs">
+            {witnessingList.map((item, idx) => (
+              <div key={item.id ? `wit_${item.id}_${idx}` : `wit_${idx}`} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-2 text-xs">
                 <div className="flex justify-between items-center font-bold text-stone-900 text-sm">
                   <span>{item.location}</span>
                   <div className="flex items-center gap-2">
@@ -2283,19 +2395,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <h2 className="text-lg font-bold text-[#1C4123]">Grupos de Serviço de Campo</h2>
               <p className="text-xs text-stone-500 font-medium">Gerenciar grupos de pregação e saídas</p>
             </div>
-            <button
-              onClick={handleOpenNewGroupModal}
-              disabled={saving}
-              className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Adicionar Novo Grupo</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFileImportModal(true)}
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+                title={isPt ? 'Importar grupos de campo por foto (Visão IA) ou documento' : 'Importar grupos de campo por foto (Visión IA) o documento'}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isPt ? 'Importar Foto / PDF / TXT (IA)' : 'Importar Foto / PDF / TXT (IA)'}</span>
+              </button>
+              <button
+                onClick={handleOpenNewGroupModal}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 bg-[#1C4123] hover:bg-[#285A31] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Adicionar Novo Grupo</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {groupsList.map((group) => (
-              <div key={group.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-2 text-xs relative">
+            {groupsList.map((group, idx) => (
+              <div key={group.id ? `grp_${group.id}_${idx}` : `grp_${idx}`} className="p-4 rounded-2xl border border-stone-200 bg-stone-50 space-y-2 text-xs relative">
                 <div className="flex justify-between items-center font-extrabold text-[#1C4123] text-sm border-b pb-1">
                   <span>Grupo #{group.number} - {group.name}</span>
                   <div className="flex items-center gap-1">
@@ -2554,6 +2677,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* TAB 8: DICIONÁRIO E LOCALIZAÇÃO */}
+      {activeTab === 'dictionary' && (
+        <DictionaryEditor 
+          isPt={isPt} 
+          onNotification={(msg) => showNotification(msg)} 
+        />
       )}
 
       {/* Double Confirmation Modal for Clear All Data */}
@@ -3097,14 +3228,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* Modal Importar de PDF / TXT / RTF */}
+      {/* Modal Importar de PDF / TXT / RTF / IA */}
       <FileImportModal
         isOpen={showFileImportModal}
         onClose={() => setShowFileImportModal(false)}
         isPt={isPt}
+        initialSection={
+          activeTab === 'cleaning' ? 'cleaning' :
+          activeTab === 'witnessing' ? 'witnessing' :
+          activeTab === 'groups' ? 'groups' :
+          activeTab === 'announcements' ? 'announcements' :
+          'meetings'
+        }
         initialMeetingTarget={activeTab === 'weekend' ? 'weekend' : 'midweek'}
         onApplyParsedData={handleApplyParsedData}
         onApplyAllParsedWeeks={handleApplyAllParsedWeeks}
+        onApplyParsedCleaning={handleApplyParsedCleaning}
+        onApplyParsedWitnessing={handleApplyParsedWitnessing}
+        onApplyParsedGroups={handleApplyParsedGroups}
+        onApplyParsedAnnouncements={handleApplyParsedAnnouncements}
       />
 
       {/* Floating Accessibility Text Scale Selector Bar */}

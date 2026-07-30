@@ -57,43 +57,77 @@ export function get21WeeksWindow(refDate: Date = new Date()): WeekWindow21 {
   };
 }
 
+const MONTH_NAMES_MAP: Record<string, number> = {
+  janeiro: 0, enero: 0, jan: 0,
+  fevereiro: 1, febrero: 1, feb: 1, fev: 1,
+  marco: 2, março: 2, marzo: 2, mar: 2,
+  abril: 3, abr: 3,
+  maio: 4, mayo: 4, mai: 4,
+  junho: 5, junio: 5, jun: 5,
+  julho: 6, julio: 6, jul: 6,
+  agosto: 7, ago: 7,
+  setembro: 8, septiembre: 8, set: 8, sep: 8,
+  outubro: 9, octubre: 9, out: 9, oct: 9,
+  novembro: 10, noviembre: 10, nov: 10,
+  dezembro: 11, diciembre: 11, dez: 11, dic: 11,
+};
+
 /**
  * Helper to parse a Date object from an item's weekId, date, id, or weekLabel string
  */
 export function parseItemDate(item: any): Date | null {
   if (!item) return null;
-  const str = item.weekId || item.date || item.id || item.weekLabel;
-  if (!str || typeof str !== 'string') return null;
+  
+  // Try fields in order
+  const candidates = [item.weekDate, item.weekId, item.date, item.id, item.weekLabel];
+  
+  for (const cand of candidates) {
+    if (!cand || typeof cand !== 'string') continue;
+    const str = cand.trim();
 
-  // Extract YYYY-MM-DD pattern if present
-  const matchIso = str.match(/\d{4}-\d{2}-\d{2}/);
-  if (matchIso) {
-    const parts = matchIso[0].split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    const parsed = new Date(year, month, day);
-    if (!isNaN(parsed.getTime())) {
-      return parsed;
+    // 1. Extract YYYY-MM-DD pattern
+    const matchIso = str.match(/\d{4}-\d{2}-\d{2}/);
+    if (matchIso) {
+      const parts = matchIso[0].split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const parsed = new Date(year, month, day);
+      if (!isNaN(parsed.getTime())) return parsed;
     }
-  }
 
-  // Extract DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY pattern if present
-  const matchDdMmYyyy = str.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})/);
-  if (matchDdMmYyyy) {
-    const day = parseInt(matchDdMmYyyy[1], 10);
-    const month = parseInt(matchDdMmYyyy[2], 10) - 1;
-    const year = parseInt(matchDdMmYyyy[3], 10);
-    const parsed = new Date(year, month, day);
-    if (!isNaN(parsed.getTime())) {
-      return parsed;
+    // 2. Extract DD/MM/YYYY or DD-MM-YYYY pattern
+    const matchDdMmYyyy = str.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})/);
+    if (matchDdMmYyyy) {
+      const day = parseInt(matchDdMmYyyy[1], 10);
+      const month = parseInt(matchDdMmYyyy[2], 10) - 1;
+      const year = parseInt(matchDdMmYyyy[3], 10);
+      const parsed = new Date(year, month, day);
+      if (!isNaN(parsed.getTime())) return parsed;
     }
-  }
 
-  // Fallback to direct Date parsing
-  const direct = new Date(str);
-  if (!isNaN(direct.getTime())) {
-    return direct;
+    // 3. Extract Textual Month pattern: e.g. "4 DE AGOSTO DE 2025" or "4 - 10 DE AGOSTO"
+    const lower = str.toLowerCase();
+    for (const [monthName, monthIndex] of Object.entries(MONTH_NAMES_MAP)) {
+      if (lower.includes(monthName)) {
+        // Find day digits before month name
+        const dayMatch = str.match(/(\d{1,2})\s*(?:-|a|de)?\s*(?:\d{1,2})?\s*(?:de)?\s*[a-zçáéíóúñ]+/i);
+        if (dayMatch) {
+          const day = parseInt(dayMatch[1], 10);
+          // Check for year
+          const yearMatch = str.match(/\b(20\d{2})\b/);
+          const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+          const parsed = new Date(year, monthIndex, day);
+          if (!isNaN(parsed.getTime())) return parsed;
+        }
+      }
+    }
+
+    // 4. Fallback to direct Date parsing
+    const direct = new Date(str);
+    if (!isNaN(direct.getTime()) && direct.getFullYear() > 1990) {
+      return direct;
+    }
   }
 
   return null;
@@ -170,6 +204,7 @@ export function findCurrentWeekIndex<T>(items: T[], refDate: Date = new Date()):
   if (!Array.isArray(items) || items.length === 0) return 0;
   const currentMon = getMondayOf(refDate).getTime();
 
+  let exactIndex = -1;
   let closestIndex = 0;
   let minDiff = Infinity;
 
@@ -178,6 +213,9 @@ export function findCurrentWeekIndex<T>(items: T[], refDate: Date = new Date()):
     if (itemDate) {
       const itemMon = getMondayOf(itemDate).getTime();
       const diff = Math.abs(itemMon - currentMon);
+      if (diff === 0) {
+        exactIndex = idx;
+      }
       if (diff < minDiff) {
         minDiff = diff;
         closestIndex = idx;
@@ -185,5 +223,5 @@ export function findCurrentWeekIndex<T>(items: T[], refDate: Date = new Date()):
     }
   });
 
-  return closestIndex;
+  return exactIndex >= 0 ? exactIndex : closestIndex;
 }

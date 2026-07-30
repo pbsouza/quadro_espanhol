@@ -1,4 +1,4 @@
-export type AppLanguage = 'pt' | 'es';
+export type AppLanguage = string;
 
 export type PageView = 
   | 'home' 

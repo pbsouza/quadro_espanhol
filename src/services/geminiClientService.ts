@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { sanitizeParsedWeekTitles } from '../utils/textUtils';
+import { getPromptForTarget } from '../utils/geminiPrompts';
 
 const GEMINI_KEY_STORAGE_KEY = 'gemini_api_key';
 
@@ -127,10 +128,12 @@ export async function getAvailableModelsForKey(apiKey: string): Promise<string[]
 export async function parseImageWithClientGemini(
   imageBase64: string,
   mimeType: string,
-  apiKey: string
-): Promise<any[]> {
+  apiKey: string,
+  targetType: string = 'meetings'
+): Promise<any> {
   const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
   const candidateModels = await getAvailableModelsForKey(apiKey);
+  const promptText = getPromptForTarget(targetType);
 
   let lastErrorMsg = '';
 
@@ -150,7 +153,7 @@ export async function parseImageWithClientGemini(
                     data: cleanBase64,
                   },
                 },
-                { text: SCHEDULE_PROMPT },
+                { text: promptText },
               ],
             },
           ],
@@ -171,10 +174,15 @@ export async function parseImageWithClientGemini(
       const resData = await res.json();
       const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
-      const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
-        ? parsedJSON.weeks
-        : [parsedJSON];
-      return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
+
+      if (parsedJSON.weeks || Array.isArray(parsedJSON.weeks)) {
+        const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
+          ? parsedJSON.weeks
+          : [parsedJSON];
+        return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
+      }
+
+      return parsedJSON;
     } catch (err: any) {
       console.warn(`Model ${modelName} error:`, err);
       lastErrorMsg = err?.message || String(err);
@@ -188,9 +196,11 @@ export async function parseDocWithClientGemini(
   documentText: string,
   fileBase64: string | undefined,
   mimeType: string | undefined,
-  apiKey: string
-): Promise<any[]> {
+  apiKey: string,
+  targetType: string = 'meetings'
+): Promise<any> {
   const parts: any[] = [];
+  const promptText = getPromptForTarget(targetType);
 
   if (fileBase64 && mimeType === 'application/pdf') {
     const cleanBase64 = fileBase64.replace(/^data:application\/pdf;base64,/, '');
@@ -206,7 +216,7 @@ export async function parseDocWithClientGemini(
     parts.push({ text: `DOCUMENTO / TEXTO:\n\n${documentText}` });
   }
 
-  parts.push({ text: SCHEDULE_PROMPT });
+  parts.push({ text: promptText });
 
   const candidateModels = await getAvailableModelsForKey(apiKey);
   let lastErrorMsg = '';
@@ -236,10 +246,15 @@ export async function parseDocWithClientGemini(
       const resData = await res.json();
       const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsedJSON = JSON.parse(responseText);
-      const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
-        ? parsedJSON.weeks
-        : [parsedJSON];
-      return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
+
+      if (parsedJSON.weeks || Array.isArray(parsedJSON.weeks)) {
+        const rawWeeks = (Array.isArray(parsedJSON.weeks) && parsedJSON.weeks.length > 0)
+          ? parsedJSON.weeks
+          : [parsedJSON];
+        return rawWeeks.map((w: any) => sanitizeParsedWeekTitles(w));
+      }
+
+      return parsedJSON;
     } catch (err: any) {
       console.warn(`Model ${modelName} error:`, err);
       lastErrorMsg = err?.message || String(err);

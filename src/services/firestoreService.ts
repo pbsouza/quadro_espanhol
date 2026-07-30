@@ -18,6 +18,11 @@ import {
   DEFAULT_CARD_IMAGES
 } from '../types';
 import { 
+  setCustomTranslationsData, 
+  getCustomTranslationsData,
+  CustomTranslationsData 
+} from '../data/translations';
+import { 
   INITIAL_MIDWEEK_MEETINGS, 
   INITIAL_WEEKEND_MEETINGS, 
   INITIAL_ANNOUNCEMENTS, 
@@ -259,6 +264,54 @@ export async function saveCardImages(images: CardImages): Promise<void> {
   if (db) {
     const docRef = doc(db, SETTINGS_COL, 'card_images');
     await setDoc(docRef, merged, { merge: true });
+  }
+}
+
+// Subscribe to Custom Translations & Dictionaries
+export function subscribeCustomTranslations(onUpdate?: (data: CustomTranslationsData) => void) {
+  const cached = cacheService.getCustomTranslations<CustomTranslationsData>();
+  if (cached) {
+    setCustomTranslationsData(cached);
+    if (onUpdate) onUpdate(cached);
+  }
+
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, SETTINGS_COL, 'custom_translations');
+    return onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as CustomTranslationsData;
+          cacheService.setCustomTranslations(data);
+          setCustomTranslationsData(data);
+          if (onUpdate) onUpdate(data);
+        }
+      },
+      (err) => {
+        console.warn('Firestore subscription error (custom_translations):', err);
+        const fallback = cacheService.getCustomTranslations<CustomTranslationsData>();
+        if (fallback) setCustomTranslationsData(fallback);
+      }
+    );
+  } catch (err) {
+    console.warn('Error connecting to firestore custom_translations:', err);
+    return () => {};
+  }
+}
+
+export function getCustomTranslationsState(): CustomTranslationsData {
+  return cacheService.getCustomTranslations<CustomTranslationsData>() || getCustomTranslationsData();
+}
+
+export async function saveCustomTranslations(data: CustomTranslationsData): Promise<void> {
+  cacheService.setCustomTranslations(data);
+  setCustomTranslationsData(data);
+
+  if (db) {
+    const docRef = doc(db, SETTINGS_COL, 'custom_translations');
+    await setDoc(docRef, data, { merge: true });
   }
 }
 
